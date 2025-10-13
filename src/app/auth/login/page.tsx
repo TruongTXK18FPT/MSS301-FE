@@ -7,11 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { AuthAPI } from "@/services/auth.service";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const router = useRouter();
+  const { toast } = useToast();
+  const { login } = useAuth();
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
@@ -61,7 +68,22 @@ export default function LoginPage() {
         </CardHeader>
         
         <CardContent className="space-y-6 relative z-10">
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={async (e) => {
+            e.preventDefault();
+            const res = await AuthAPI.login({ email, password });
+            if (res.code === 1000 && res.result?.token) {
+              await login(res.result.token);
+              // redirect by role - currently STUDENT -> "/"
+              router.push("/");
+            } else {
+              const message = res.message || "Đăng nhập thất bại";
+              if (message.includes("Email chưa được xác thực")) {
+                // redirect to OTP page later when created
+                router.push("/auth/verify-otp?email=" + encodeURIComponent(email));
+              }
+              toast({ description: message, variant: "destructive" });
+            }
+          }}>
             <div className="space-y-3">
               <Label htmlFor="email" className="text-purple-200 font-medium flex items-center gap-2">
                 <Mail className="size-4" />
