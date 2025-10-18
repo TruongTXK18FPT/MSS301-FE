@@ -5,10 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthAPI } from "@/services/auth.service";
-import { AddressAPI } from "@/services/address.service";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -24,10 +23,10 @@ const schema = z.object({
   qualifications: z.string().optional(),
   bio: z.string().optional(),
   phone: z.string().min(9, "Số điện thoại không hợp lệ"),
-  birthDate: z.string().min(1, "Vui lòng chọn ngày sinh"),
-  address: z.string().min(1, "Vui lòng nhập địa chỉ"),
-  provinceCode: z.string().min(1, "Chọn tỉnh/TP"),
-  wardCode: z.string().min(1, "Chọn phường/xã"),
+  confirmPassword: z.string().min(6, "Vui lòng xác nhận mật khẩu"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Mật khẩu không khớp",
+  path: ["confirmPassword"],
 });
 
 type TeacherForm = z.infer<typeof schema>;
@@ -37,13 +36,7 @@ export default function TeacherRegisterPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { register, handleSubmit, formState: { errors } } = useForm<TeacherForm>({ resolver: zodResolver(schema) });
-  const [provinces, setProvinces] = useState<any[]>([]);
-  const [wards, setWards] = useState<any[]>([]);
-
-  useEffect(() => { (async () => {
-    const res = await AddressAPI.getProvinces();
-    if (res.code === 1000 && res.result?.data) setProvinces(res.result.data);
-  })(); }, []);
+  // Removed province/ward fetching for shorter form
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
@@ -54,27 +47,16 @@ export default function TeacherRegisterPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-5" onSubmit={handleSubmit(async (values) => {
-            const [d, m, y] = values.birthDate.split('/');
-            const birth = `${y}-${m}-${d}`;
             const payload = {
               username: values.name || values.email.split('@')[0],
               fullName: values.name,
               email: values.email,
               password: values.password,
-              confirmPassword: values.password,
+              confirmPassword: values.confirmPassword,
               userType: 'TEACHER' as const,
-              department: values.department,
-              specialization: values.specialization,
-              yearsOfExperience: values.yearsOfExperience,
-              qualifications: values.qualifications,
-              bio: values.bio,
-              phone: values.phone,
-              birthDate: birth,
-              address: values.address,
-              provinceCode: Number(values.provinceCode),
-              wardCode: values.wardCode,
-              tenantId: null,
-            };
+              // Teacher full profile is captured here but base register only needs basic fields.
+              // We'll still send base payload for registration, and the rest will be sent via complete-profile after login when approved.
+            } as const;
             const res = await AuthAPI.register(payload);
             if (res.code === 1000) {
               toast({ description: 'Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.' });
@@ -99,6 +81,11 @@ export default function TeacherRegisterPage() {
               {errors.password && <p className="text-sm text-red-400">{errors.password.message}</p>}
             </div>
             <div className="space-y-3">
+              <Label>Xác nhận mật khẩu</Label>
+              <Input type={showPassword ? 'text' : 'password'} {...register('confirmPassword')} />
+              {errors.confirmPassword && <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>}
+            </div>
+            <div className="space-y-3">
               <Label>Tổ/Bộ môn</Label>
               <Input placeholder="Toán/Lý/Hóa..." {...register('department')} />
               {errors.department && <p className="text-sm text-red-400">{errors.department.message}</p>}
@@ -121,40 +108,11 @@ export default function TeacherRegisterPage() {
               <Textarea {...register('bio')} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <Label>Số điện thoại</Label>
-                <Input placeholder="Số điện thoại" {...register('phone')} />
-              </div>
-              <div className="space-y-3">
-                <Label>Ngày sinh (dd/MM/yyyy)</Label>
-                <Input placeholder="dd/MM/yyyy" {...register('birthDate')} />
-              </div>
-            </div>
             <div className="space-y-3">
-              <Label>Địa chỉ</Label>
-              <Textarea {...register('address')} />
+              <Label>Số điện thoại</Label>
+              <Input placeholder="Số điện thoại" {...register('phone')} />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <Label>Tỉnh/TP</Label>
-                <select className="w-full rounded-md bg-black/30 p-2" {...register('provinceCode')} onChange={async (e) => {
-                  const code = e.target.value;
-                  const resp = await AddressAPI.getWardsByProvince(code);
-                  if (resp.code === 1000 && resp.result?.data) setWards(resp.result.data);
-                }}>
-                  <option value="">Chọn tỉnh/TP</option>
-                  {provinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
-                </select>
-              </div>
-              <div className="space-y-3">
-                <Label>Phường/Xã</Label>
-                <select className="w-full rounded-md bg-black/30 p-2" {...register('wardCode')}>
-                  <option value="">Chọn phường/xã</option>
-                  {wards.map(w => <option key={w.code} value={w.code}>{w.name}</option>)}
-                </select>
-              </div>
-            </div>
+            {/* Address and location fields removed for shorter initial form */}
             <Button type="submit" className="w-full">Đăng ký</Button>
           </form>
         </CardContent>

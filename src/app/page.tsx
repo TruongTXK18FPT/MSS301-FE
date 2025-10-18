@@ -1,9 +1,11 @@
+"use client";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ArrowRight, Bot, BrainCircuit, BookOpen, Presentation } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useAuth } from '@/context/auth-context';
 
 const benefits = [
   {
@@ -32,10 +34,16 @@ export default function Home() {
   const mindmapImage = PlaceHolderImages.find(p => p.id === "1");
   const quizImage = PlaceHolderImages.find(p => p.id === "2");
   const dashboardImage = PlaceHolderImages.find(p => p.id === "3");
+  const { profileCompleted, role } = useAuth();
 
   return (
     <div className="container mx-auto px-4 py-16 sm:py-24">
       <section className="text-center">
+        {!profileCompleted && (role === 'STUDENT' || role === 'GUARDIAN') && (
+          <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-yellow-200">
+            Hồ sơ của bạn chưa hoàn chỉnh. <Link href="/profile" className="underline">Hoàn thiện ngay</Link> để trải nghiệm đầy đủ.
+          </div>
+        )}
         <h1 className="font-headline text-4xl font-bold tracking-tight text-ink-white sm:text-5xl md:text-6xl">
           Khám phá vũ trụ <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet to-teal">Toán học</span> của bạn 🚀
         </h1>

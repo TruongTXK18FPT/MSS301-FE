@@ -54,193 +54,42 @@ export default function RegisterPage() {
         <div className="stars absolute inset-0"></div>
         <div className="twinkling absolute inset-0"></div>
         
-        <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={`particle-${i}`}
-              className="absolute w-1.5 h-1.5 bg-gradient-to-r from-pink-400 to-violet-400 rounded-full opacity-70"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animation: `float ${4 + Math.random() * 3}s ease-in-out ${Math.random() * 5}s infinite`
-              }}
-            />
-          ))}
-        </div>
+        {/* Removed random particles to avoid SSR/CSR hydration mismatch */}
         
         <div className="absolute top-10 right-20 w-72 h-72 bg-gradient-to-r from-pink-500/10 to-violet-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-10 left-20 w-96 h-96 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '3s'}}></div>
       </div>
 
-      <Card className="w-full max-w-lg bg-black/30 backdrop-blur-xl border border-pink-500/30 rounded-3xl shadow-2xl shadow-pink-500/20 relative z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-violet-500/5 to-pink-500/5 rounded-3xl"></div>
+      <Card className="w-full max-w-3xl bg-black/30 backdrop-blur-xl border border-pink-500/30 rounded-3xl shadow-2xl shadow-pink-500/20 relative z-10 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-violet-500/5 to-pink-500/5 rounded-3xl pointer-events-none"></div>
         
-        <CardHeader className="text-center relative z-10 pb-6">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 rounded-full bg-gradient-to-r from-pink-500 to-violet-500 animate-pulse">
-              <Rocket className="size-8 text-white" />
-            </div>
-          </div>
+        <CardHeader className="text-center relative z-10 pb-4">
           <CardTitle className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-violet-400 to-pink-400">
-            Tạo Tài Khoản
+            Chọn vai trò đăng ký
           </CardTitle>
-          <CardDescription className="text-pink-200/80 mt-2">
-            Bắt đầu cuộc hành trình toán học của bạn với MathMind.
-            <br />
-            <span className="text-sm text-violet-300">✨ Bạn có thể hoàn thiện hồ sơ chi tiết sau khi đăng ký</span>
-          </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6 relative z-10">
-          <form className="space-y-5" onSubmit={handleSubmit(async (values) => {
-            const res = await AuthAPI.register(values);
-            if (res.code === 1000) {
-              toast({ description: "Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP." });
-              router.push("/auth/verify-otp?email=" + encodeURIComponent(values.email));
-            } else {
-              toast({ description: res.message || "Đăng ký thất bại", variant: "destructive" });
-            }
-          })}>
-            <div className="space-y-3">
-              <Label htmlFor="fullName" className="text-pink-200 font-medium flex items-center gap-2">
-                <User className="size-4" />
-                Họ và Tên
-              </Label>
-              <div className="relative group">
-                <Input 
-                  id="fullName" 
-                  type="text" 
-                  placeholder="Nguyễn Văn A" 
-                  {...register('fullName')}
-                  className="bg-black/40 border-pink-400/30 text-white placeholder:text-pink-200/50 rounded-xl h-14 pl-12 backdrop-blur-sm focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300" 
-                />
-                {errors.fullName && <p className="text-sm text-red-400 mt-1">{errors.fullName.message}</p>}
-                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 size-5 text-pink-300 transition-colors" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            <Link href="/auth/register/student" className="block">
+              <div className="h-full rounded-2xl border border-pink-500/30 p-8 transition shadow-lg hover:bg-pink-500/10 text-center flex flex-col items-center justify-center min-h-[140px] relative z-10" aria-label="Đăng ký học sinh">
+                <div className="text-4xl mb-2">🎓</div>
+                <div className="text-white font-semibold text-lg">Học sinh</div>
               </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="username" className="text-pink-200 font-medium flex items-center gap-2">
-                <UserCircle className="size-4" />
-                Tên đăng nhập
-              </Label>
-              <div className="relative group">
-                <Input 
-                  id="username" 
-                  type="text" 
-                  placeholder="username123" 
-                  {...register('username')}
-                  className="bg-black/40 border-pink-400/30 text-white placeholder:text-pink-200/50 rounded-xl h-14 pl-12 backdrop-blur-sm focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300" 
-                />
-                {errors.username && <p className="text-sm text-red-400 mt-1">{errors.username.message}</p>}
-                <UserCircle className="absolute left-4 top-1/2 transform -translate-y-1/2 size-5 text-pink-300 transition-colors" />
+            </Link>
+            <Link href="/auth/register/teacher" className="block">
+              <div className="h-full rounded-2xl border border-pink-500/30 p-8 transition shadow-lg hover:bg-pink-500/10 text-center flex flex-col items-center justify-center min-h-[140px] relative z-10" aria-label="Đăng ký giáo viên">
+                <div className="text-4xl mb-2">👨‍🏫</div>
+                <div className="text-white font-semibold text-lg">Giáo viên</div>
               </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="email" className="text-pink-200 font-medium flex items-center gap-2">
-                <Mail className="size-4" />
-                Địa chỉ Email
-              </Label>
-              <div className="relative group">
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="ten@email.com" 
-                  {...register('email')}
-                  className="bg-black/40 border-pink-400/30 text-white placeholder:text-pink-200/50 rounded-xl h-14 pl-12 backdrop-blur-sm focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300" 
-                />
-                {errors.email && <p className="text-sm text-red-400 mt-1">{errors.email.message}</p>}
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 size-5 text-pink-300 transition-colors" />
+            </Link>
+            <Link href="/auth/register/guardian" className="block">
+              <div className="h-full rounded-2xl border border-pink-500/30 p-8 transition shadow-lg hover:bg-pink-500/10 text-center flex flex-col items-center justify-center min-h-[140px] relative z-10" aria-label="Đăng ký phụ huynh">
+                <div className="text-4xl mb-2">👪</div>
+                <div className="text-white font-semibold text-lg">Phụ huynh</div>
               </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="password" className="text-pink-200 font-medium flex items-center gap-2">
-                <Lock className="size-4" />
-                Mật khẩu
-              </Label>
-              <div className="relative group">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  placeholder="••••••••"
-                  {...register('password')}
-                  className="bg-black/40 border-pink-400/30 text-white placeholder:text-pink-200/50 rounded-xl h-14 pl-12 pr-12 backdrop-blur-sm focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300" 
-                />
-                {errors.password && <p className="text-sm text-red-400 mt-1">{errors.password.message}</p>}
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 size-5 text-pink-300 transition-colors" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-pink-300 hover:text-violet-300 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="confirmPassword" className="text-pink-200 font-medium flex items-center gap-2">
-                <Lock className="size-4" />
-                Xác nhận mật khẩu
-              </Label>
-              <div className="relative group">
-                <Input 
-                  id="confirmPassword" 
-                  type={showConfirmPassword ? "text" : "password"} 
-                  placeholder="••••••••"
-                  {...register('confirmPassword')}
-                  className="bg-black/40 border-pink-400/30 text-white placeholder:text-pink-200/50 rounded-xl h-14 pl-12 pr-12 backdrop-blur-sm focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300" 
-                />
-                {errors.confirmPassword && <p className="text-sm text-red-400 mt-1">{errors.confirmPassword.message}</p>}
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 size-5 text-pink-300 transition-colors" />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-pink-300 hover:text-violet-300 transition-colors"
-                >
-                  {showConfirmPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="userType" className="text-pink-200 font-medium flex items-center gap-2">
-                <UserCircle className="size-4" />
-                Vai trò
-              </Label>
-              <Select value={watch('userType')} onValueChange={(value) => setValue('userType', value as any)}>
-                <SelectTrigger className="bg-black/40 border-pink-400/30 text-white rounded-xl h-14 backdrop-blur-sm focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-300">
-                  <SelectValue placeholder="Chọn vai trò của bạn" />
-                </SelectTrigger>
-                <SelectContent className="bg-black/90 backdrop-blur-xl border-pink-400/30 rounded-xl">
-                  <SelectItem value="STUDENT" className="text-white hover:bg-pink-500/20 focus:bg-violet-500/20 rounded-lg">
-                    🎓 Học sinh
-                  </SelectItem>
-                  <SelectItem value="TEACHER" className="text-white hover:bg-pink-500/20 focus:bg-violet-500/20 rounded-lg">
-                    👨‍🏫 Giáo viên
-                  </SelectItem>
-                  <SelectItem value="GUARDIAN" className="text-white hover:bg-pink-500/20 focus:bg-violet-500/20 rounded-lg">
-                    👪 Phụ huynh
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.userType && <p className="text-sm text-red-400 mt-1">{errors.userType.message}</p>}
-            </div>
-            
-            <div className="pt-4">
-              <Button 
-                type="submit" 
-                className="w-full rounded-xl h-14 text-base font-semibold bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white shadow-2xl shadow-pink-500/30 transition-all duration-300 hover:scale-105 relative overflow-hidden group"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  <Rocket className="size-5" />
-                  🚀 Tạo tài khoản
-                </span>
-              </Button>
-            </div>
-          </form>
+            </Link>
+          </div>
           
           <div className="mt-6 text-center">
             <p className="text-pink-200/80">

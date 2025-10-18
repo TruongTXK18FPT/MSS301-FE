@@ -19,6 +19,7 @@ export interface RegisterRequest {
   password: string;
   confirmPassword: string;
   userType: "STUDENT" | "TEACHER" | "GUARDIAN";
+  // Optional extended fields will be handled in complete-profile; keep base minimal
 }
 
 export interface VerifyEmailRequest {

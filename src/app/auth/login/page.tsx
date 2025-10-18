@@ -73,7 +73,7 @@ export default function LoginPage() {
             const res = await AuthAPI.login({ email, password });
             if (res.code === 1000 && res.result?.token) {
               await login(res.result.token);
-              // redirect by role - currently STUDENT -> "/"
+              // After login, if profile incomplete and role is STUDENT/GUARDIAN, show prompt on home
               router.push("/");
             } else {
               const message = res.message || "Đăng nhập thất bại";
