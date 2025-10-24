@@ -22,7 +22,7 @@ import {
   BarChart3,
   Target
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Mock data
 const classData = {
@@ -56,6 +56,18 @@ const recentActivities = [
 
 export default function ClassPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [academicIcons, setAcademicIcons] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
+
+  useEffect(() => {
+    // Generate academic icons positions on client side only to avoid hydration mismatch
+    const generatedIcons = [GraduationCap, BookOpen, Award, Users].map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 6}s`,
+      animationDuration: `${6 + Math.random() * 4}s`
+    }));
+    setAcademicIcons(generatedIcons);
+  }, []);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -67,18 +79,25 @@ export default function ClassPage() {
         
         {/* Floating Academic Icons */}
         <div className="absolute inset-0">
-          {[GraduationCap, BookOpen, Award, Users].map((Icon, i) => (
+          {academicIcons.map((icon, i) => (
             <div
               key={`academic-${i}`}
               className="absolute opacity-10 animate-float"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 6}s`,
-                animationDuration: `${6 + Math.random() * 4}s`
+                left: icon.left,
+                top: icon.top,
+                animationDelay: icon.animationDelay,
+                animationDuration: icon.animationDuration
               }}
             >
-              <Icon className="size-8 text-emerald-400" />
+              {[GraduationCap, BookOpen, Award, Users][i] && (
+                <div className="size-8 text-emerald-400">
+                  {i === 0 && <GraduationCap className="size-8 text-emerald-400" />}
+                  {i === 1 && <BookOpen className="size-8 text-emerald-400" />}
+                  {i === 2 && <Award className="size-8 text-emerald-400" />}
+                  {i === 3 && <Users className="size-8 text-emerald-400" />}
+                </div>
+              )}
             </div>
           ))}
         </div>

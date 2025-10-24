@@ -21,7 +21,7 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { readonly children: React.ReactNode }) {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [id, setId] = useState<string | null>(null);
@@ -70,6 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const performIntrospect = useCallback(async (jwt: string) => {
     try {
       console.log('[Auth] Performing token introspect...');
+      
+      // Save token to globalThis.localStorage first (only on client side)
+      if (globalThis.window !== undefined) {
+        globalThis.localStorage.setItem("authToken", jwt);
+      }
+      setToken(jwt);
+      
       const res = await AuthAPI.introspect(jwt);
       
       if (res.code === 1000 && res.result?.valid) {
@@ -85,7 +92,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         console.log('[Auth] Token is invalid, cleaning up...');
         // invalid token -> cleanup
-        localStorage.removeItem("authToken");
+        if (globalThis.window !== undefined) {
+          globalThis.localStorage.removeItem("authToken");
+        }
         setToken(null);
         setId(null);
         setEmail(null);
@@ -95,10 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('[Auth] Introspect failed:', error);
-      // Only clear token if it's definitely invalid, not on network errors
-      if ((error as any)?.message?.includes('Token invalid') || (error as any)?.message?.includes('Token validation failed')) {
-        console.log('[Auth] Token is definitely invalid, cleaning up...');
-        localStorage.removeItem("authToken");
+      // Only clear token if it's definitely invalid, not on network errors     
+      if ((error as any)?.message?.includes('Token invalid') || (error as any)?.message?.includes('Token validation failed')) {                                 
+        console.log('[Auth] Token is definitely invalid, cleaning up...');      
+        if (globalThis.window !== undefined) {
+          globalThis.localStorage.removeItem("authToken");
+        }
         setToken(null);
         setId(null);
         setEmail(null);
@@ -106,24 +117,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(null);
         setProfileCompleted(true);
       } else {
-        console.log('[Auth] Network or other error, keeping token for retry...');
+        console.log('[Auth] Network or other error, keeping token for retry...');                                                                               
         // Don't clear token on network errors
       }
     }
-  }, [checkProfileStatus]);
+  }, [checkProfileStatus, checkPasswordSetup]);
 
   useEffect(() => {
+    // Only run on client side to avoid hydration mismatch
+    if (globalThis.window === undefined) {
+      setLoading(false);
+      return;
+    }
+
     // Check for token in URL parameters first (for OAuth callback)
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(globalThis.window.location.search);
     const urlToken = urlParams.get('token');
     
     if (urlToken) {
       console.log('[Auth] Found token in URL, processing...');
       // Clean URL to remove token parameter first
-      window.history.replaceState({}, document.title, window.location.pathname);
+      globalThis.window.history.replaceState({}, globalThis.document.title, globalThis.window.location.pathname);
       
       // Save token to localStorage immediately
-      localStorage.setItem("authToken", urlToken);
+      if (globalThis.window !== undefined) {
+        globalThis.localStorage.setItem("authToken", urlToken);
+      }
       setToken(urlToken);
       
       // Perform introspect - it will handle user info extraction
@@ -131,8 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    // Check localStorage for existing token
-    const jwt = localStorage.getItem("authToken");
+    // Check globalThis.localStorage for existing token
+    const jwt = globalThis.localStorage.getItem("authToken");
     if (!jwt) {
       console.log('[Auth] No token found in localStorage');
       setLoading(false);
@@ -145,7 +164,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [performIntrospect]);
 
   const login = useCallback(async (jwt: string) => {
-    localStorage.setItem("authToken", jwt);
+    if (globalThis.window !== undefined) {
+      globalThis.localStorage.setItem("authToken", jwt);
+    }
     setToken(jwt);
     await performIntrospect(jwt);
     await checkProfileStatus();
@@ -162,7 +183,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Continue with local logout even if API call fails
     } finally {
       // Clear local storage and state
-      localStorage.removeItem("authToken");
+      if (globalThis.window !== undefined) {
+        globalThis.localStorage.removeItem("authToken");
+      }
       setToken(null);
       setId(null);
       setEmail(null);
@@ -196,7 +219,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
-
-
-
-

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Plus, Search, Star, Calendar, Eye, Edit, Trash2, Download, Share } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Mock data for mindmaps
 const mindmapTemplates = [
@@ -84,6 +84,18 @@ const userMindmaps = [
 export default function MindMapPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [brainIcons, setBrainIcons] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
+
+  useEffect(() => {
+    // Generate brain icons positions on client side only to avoid hydration mismatch
+    const generatedIcons = new Array(8).fill(null).map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 5}s`,
+      animationDuration: `${5 + Math.random() * 3}s`
+    }));
+    setBrainIcons(generatedIcons);
+  }, []);
 
   const categories = ["all", "Đại số", "Hình học", "Lượng giác", "Cá nhân"];
 
@@ -107,15 +119,15 @@ export default function MindMapPage() {
         
         {/* Floating Brain Icons */}
         <div className="absolute inset-0">
-          {[...Array(8)].map((_, i) => (
+          {brainIcons.map((icon, i) => (
             <div
               key={`brain-${i}`}
               className="absolute opacity-10 animate-float"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${5 + Math.random() * 3}s`
+                left: icon.left,
+                top: icon.top,
+                animationDelay: icon.animationDelay,
+                animationDuration: icon.animationDuration
               }}
             >
               <Brain className="size-8 text-purple-400" />

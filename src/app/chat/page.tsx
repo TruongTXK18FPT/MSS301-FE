@@ -64,6 +64,18 @@ export default function ChatPage() {
   const [chatState, setChatState] = useState<ChatState>('model_selection');
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
   const [grade, setGrade] = useState<number | null>(null);
+  const [particles, setParticles] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
+
+  useEffect(() => {
+    // Generate particles on client side only to avoid hydration mismatch
+    const generatedParticles = new Array(20).fill(null).map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 3}s`,
+      animationDuration: `${3 + Math.random() * 2}s`
+    }));
+    setParticles(generatedParticles);
+  }, []);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,15 +150,15 @@ export default function ChatPage() {
         
         {/* Floating Particles */}
         <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
+          {particles.map((particle, i) => (
             <div
               key={`particle-${i}`}
               className="absolute w-2 h-2 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full opacity-60 animate-float"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${3 + Math.random() * 2}s`
+                left: particle.left,
+                top: particle.top,
+                animationDelay: particle.animationDelay,
+                animationDuration: particle.animationDuration
               }}
             ></div>
           ))}

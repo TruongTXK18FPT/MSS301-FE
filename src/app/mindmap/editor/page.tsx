@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ZoomIn, ZoomOut, Download, Share2, Library, Plus, Save, Undo, Redo, Settings, Brain, Calculator, Triangle, Circle, Star, Target, BookOpen, Lightbulb } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const nodeTemplates = [
   {
@@ -90,6 +90,19 @@ export default function MindmapEditorPage() {
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [zoomLevel, setZoomLevel] = useState(100);
   const [selectedNodeType, setSelectedNodeType] = useState("concept");
+  const [mathSymbols, setMathSymbols] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
+
+  useEffect(() => {
+    // Generate math symbols positions on client side only to avoid hydration mismatch
+    const symbols = ['∑', '∫', '∞', 'π', '√', '±', '∆', '≈'];
+    const generatedSymbols = symbols.map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 6}s`,
+      animationDuration: `${6 + Math.random() * 4}s`
+    }));
+    setMathSymbols(generatedSymbols);
+  }, []);
 
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 25, 200));
   const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 25, 25));
@@ -104,18 +117,18 @@ export default function MindmapEditorPage() {
         
         {/* Floating Math Symbols */}
         <div className="absolute inset-0">
-          {['∑', '∫', '∞', 'π', '√', '±', '∆', '≈'].map((symbol, i) => (
+          {mathSymbols.map((symbol, i) => (
             <div
-              key={`symbol-${symbol}-${i}`}
+              key={`symbol-${i}`}
               className="absolute opacity-10 animate-float text-2xl font-bold text-purple-400"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 6}s`,
-                animationDuration: `${6 + Math.random() * 4}s`
+                left: symbol.left,
+                top: symbol.top,
+                animationDelay: symbol.animationDelay,
+                animationDuration: symbol.animationDuration
               }}
             >
-              {symbol}
+              {['∑', '∫', '∞', 'π', '√', '±', '∆', '≈'][i]}
             </div>
           ))}
         </div>

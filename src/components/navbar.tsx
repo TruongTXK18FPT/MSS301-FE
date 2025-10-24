@@ -6,40 +6,64 @@ import { Button } from './ui/button';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
-import { Menu, Home, Map, Brain, Target, GraduationCap, Bot, User } from 'lucide-react';
+import { Menu, Home, Map, Brain, Target, GraduationCap, Bot, User, Rocket } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
 const navLinks = [
-  { href: '/', label: 'Trang chủ', icon: Home },
-  { href: '/roadmap', label: 'Lộ trình', icon: Map },
-  { href: '/mindmap', label: 'MindMap', icon: Brain },
-  { href: '/chat', label: 'AI Chat Bot', icon: Bot },
-  { href: '/practice', label: 'Luyện tập', icon: Target },
-  { href: '/class', label: 'Lớp học', icon: GraduationCap },
+  { href: '/', label: 'Trang chủ', icon: Home, highlight: false },
+  { href: '/roadmap', label: 'Lộ trình', icon: Map, highlight: false },
+  { href: '/mindmap', label: 'MindMap', icon: Brain, highlight: true },
+  { href: '/chat', label: 'AI Chat Bot', icon: Bot, highlight: false },
+  { href: '/practice', label: 'Luyện tập', icon: Target, highlight: false },
+  { href: '/class', label: 'Lớp học', icon: GraduationCap, highlight: false },
 ];
 
-const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: any }) => {
+const NavLink = ({ href, label, icon: Icon, highlight = false }: { href: string; label: string; icon: any; highlight?: boolean }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
+
+  const getLinkClassName = () => {
+    if (isActive) {
+      return "text-ink-white bg-gradient-to-r from-violet/20 to-teal/20 border border-violet/30 shadow-lg";
+    }
+    if (highlight) {
+      return "text-ink-white bg-gradient-to-r from-violet/10 to-teal/10 border border-violet/20 hover:from-violet/20 hover:to-teal/20 hover:border-violet/30 hover:shadow-lg hover:scale-105";
+    }
+    return "text-ink-secondary hover:text-ink-white hover:bg-white/5";
+  };
+
+  const getIconClassName = () => {
+    if (isActive) {
+      return "text-violet-400";
+    }
+    if (highlight) {
+      return "text-violet-300 group-hover:text-violet-400 group-hover:scale-110";
+    }
+    return "";
+  };
 
   return (
     <Link
       href={href}
       className={cn(
-        "rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2",
-        isActive
-          ? "text-ink-white bg-white/10"
-          : "text-ink-secondary hover:text-ink-white hover:bg-white/5"
+        "group relative rounded-xl px-4 py-2 text-sm font-medium transition-all duration-300 flex items-center gap-2",
+        getLinkClassName()
       )}
     >
-      <Icon className="size-4" />
+      <Icon className={cn(
+        "size-4 transition-transform duration-300",
+        getIconClassName()
+      )} />
       {label}
+      {highlight && (
+        <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-violet to-teal rounded-full animate-pulse" />
+      )}
     </Link>
   );
 };
 
 const Navbar = () => {
-  const { token, username, logout } = useAuth();
+  const { token, logout } = useAuth();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-surface/80 backdrop-blur-lg">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -53,29 +77,31 @@ const Navbar = () => {
         </div>
         
         <div className="hidden items-center gap-4 md:flex">
-          {!token ? (
+          {token ? (
+            <>
+              <Link href="/profile">
+                <Button variant="ghost" size="icon" className="text-ink-secondary hover:text-ink-white hover:bg-white/10 transition-all duration-300">
+                  <User className="size-5" />
+                </Button>
+              </Link>
+              <Button variant="outline" onClick={logout} className="border-white/20 hover:border-white/40 hover:bg-white/5 transition-all duration-300">
+                Đăng xuất
+              </Button>
+            </>
+          ) : (
             <>
               <Link href="/auth/login">
-                <Button variant="ghost" className="text-ink-secondary hover:text-ink-white">
+                <Button variant="ghost" className="group text-ink-secondary hover:text-ink-white hover:bg-gradient-to-r hover:from-violet/10 hover:to-teal/10 border border-transparent hover:border-violet/20 transition-all duration-300">
+                  <User className="size-4 mr-2 group-hover:scale-110 transition-transform" />
                   Đăng nhập
                 </Button>
               </Link>
               <Link href="/auth/register">
-                <Button className="rounded-full bg-gradient-to-r from-violet to-teal text-white shadow-md transition-transform hover:scale-105">
-                  🚀 Bắt đầu học
+                <Button className="group rounded-2xl bg-gradient-to-r from-violet to-teal text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]">
+                  <Rocket className="size-4 mr-2 group-hover:rotate-12 transition-transform" />
+                   Bắt đầu học
                 </Button>
               </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/profile">
-                <Button variant="ghost" size="icon" className="text-ink-secondary hover:text-ink-white">
-                  <User className="size-5" />
-                </Button>
-              </Link>
-              <Button variant="outline" onClick={logout}>
-                Đăng xuất
-              </Button>
             </>
           )}
         </div>
@@ -93,28 +119,44 @@ const Navbar = () => {
                             <Logo />
                         </div>
                         <div className="flex flex-col gap-2 p-4">
-                            {navLinks.map((link) => (
-                                <Link key={link.href} href={link.href} className="flex items-center gap-3 rounded-md px-3 py-2 text-base font-medium text-ink-secondary hover:bg-white/5 hover:text-ink-white">
-                                    <link.icon className="size-5" />
+                            {navLinks.map((link) => {
+                              const getMobileLinkClassName = () => {
+                                if (link.highlight) {
+                                  return "text-ink-white bg-gradient-to-r from-violet/10 to-teal/10 border border-violet/20 hover:from-violet/20 hover:to-teal/20 hover:border-violet/30 hover:shadow-lg";
+                                }
+                                return "text-ink-secondary hover:text-ink-white hover:bg-white/5";
+                              };
+
+                              const getMobileIconClassName = () => {
+                                if (link.highlight) {
+                                  return "text-violet-300 group-hover:text-violet-400 group-hover:scale-110";
+                                }
+                                return "";
+                              };
+
+                              return (
+                                <Link 
+                                    key={link.href} 
+                                    href={link.href} 
+                                    className={cn(
+                                        "group relative flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all duration-300",
+                                        getMobileLinkClassName()
+                                    )}
+                                >
+                                    <link.icon className={cn(
+                                        "size-5 transition-transform duration-300",
+                                        getMobileIconClassName()
+                                    )} />
                                     {link.label}
+                                    {link.highlight && (
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-violet to-teal rounded-full animate-pulse" />
+                                    )}
                                 </Link>
-                            ))}
+                              );
+                            })}
                         </div>
                         <div className="mt-auto p-4 border-t border-white/10 space-y-4">
-                          {!token ? (
-                            <>
-                              <Link href="/auth/login" className="w-full">
-                                <Button variant="ghost" className="w-full text-ink-secondary hover:bg-white/5 hover:text-ink-white">
-                                  Đăng nhập
-                                </Button>
-                              </Link>
-                              <Link href="/auth/register" className='w-full'>
-                                  <Button className="w-full rounded-full bg-gradient-to-r from-violet to-teal text-white shadow-md transition-transform hover:scale-105">
-                                  🚀 Bắt đầu học
-                                  </Button>
-                              </Link>
-                            </>
-                          ) : (
+                          {token ? (
                             <>
                               <Link href="/profile" className="block w-full text-center rounded-md px-3 py-2 text-base font-medium text-ink-secondary hover:bg-white/5 hover:text-ink-white">
                                 <User className="inline-block size-5 mr-2" />
@@ -123,6 +165,19 @@ const Navbar = () => {
                               <Button className="w-full" variant="outline" onClick={logout}>
                                 Đăng xuất
                               </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Link href="/auth/login" className="w-full">
+                                <Button variant="ghost" className="w-full text-ink-secondary hover:bg-white/5 hover:text-ink-white">
+                                  Đăng nhập
+                                </Button>
+                              </Link>
+                              <Link href="/auth/register" className='w-full'>
+                                  <Button className="w-full rounded-full bg-gradient-to-r from-violet to-teal text-white shadow-md transition-transform hover:scale-105">
+                                   Bắt đầu học
+                                  </Button>
+                              </Link>
                             </>
                           )}
                         </div>

@@ -1,11 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Toaster } from '@/components/ui/toaster';
-import CosmicBackground from '@/components/cosmic-background';
-import Navbar from '@/components/navbar';
-import Footer from '@/components/footer';
-import { AuthProvider } from '@/context/auth-context';
-import { ProfileBannerWrapper } from '@/components/ProfileBannerWrapper';
+import HydrationSafeWrapper from '@/components/hydration-safe-wrapper-v2';
 import AuthRedirect from '@/components/AuthRedirect';
 
 export const metadata: Metadata = {
