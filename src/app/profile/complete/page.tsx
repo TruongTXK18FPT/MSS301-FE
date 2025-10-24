@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from '@/context/auth-context';
 import { AuthAPI } from '@/services/auth.service';
 import { profileService } from '@/lib/services/profileService';
+import { addressService } from '@/lib/services/addressService';
 
 export default function ProfileCompletePage() {
   const router = useRouter();
@@ -25,13 +26,43 @@ export default function ProfileCompletePage() {
     bio: '',
     address: '',
     province: '',
-    district: '',
     ward: ''
   });
   const [provinces, setProvinces] = useState<any[]>([]);
-  const [districts, setDistricts] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Search states
+  const [provinceSearch, setProvinceSearch] = useState('');
+  const [wardSearch, setWardSearch] = useState('');
+  const [filteredProvinces, setFilteredProvinces] = useState<any[]>([]);
+  const [filteredWards, setFilteredWards] = useState<any[]>([]);
+  const [showProvinceDropdown, setShowProvinceDropdown] = useState(false);
+  const [showWardDropdown, setShowWardDropdown] = useState(false);
+
+  // Filter provinces based on search
+  useEffect(() => {
+    if (provinceSearch.trim() === '') {
+      setFilteredProvinces(provinces);
+    } else {
+      const filtered = provinces.filter(province => 
+        province.name.toLowerCase().includes(provinceSearch.toLowerCase())
+      );
+      setFilteredProvinces(filtered);
+    }
+  }, [provinces, provinceSearch]);
+
+  // Filter wards based on search
+  useEffect(() => {
+    if (wardSearch.trim() === '') {
+      setFilteredWards(wards);
+    } else {
+      const filtered = wards.filter(ward => 
+        ward.name.toLowerCase().includes(wardSearch.toLowerCase())
+      );
+      setFilteredWards(filtered);
+    }
+  }, [wards, wardSearch]);
 
   // Load user data and pre-fill form
   useEffect(() => {
@@ -97,231 +128,73 @@ export default function ProfileCompletePage() {
 
   // Load provinces from API
   const loadProvinces = async () => {
-    console.log('[ProfileComplete] Loading provinces...');
+    console.log('[ProfileComplete] Loading provinces from third-party API...');
     
-    // Always load fallback data first
-    setProvinces([
-      { id: '01', name: 'Hà Nội' }, { id: '02', name: 'TP. Hồ Chí Minh' }, { id: '03', name: 'Đà Nẵng' },
-      { id: '04', name: 'Hải Phòng' }, { id: '05', name: 'Cần Thơ' }, { id: '06', name: 'An Giang' },
-      { id: '07', name: 'Bà Rịa - Vũng Tàu' }, { id: '08', name: 'Bắc Giang' }, { id: '09', name: 'Bắc Kạn' },
-      { id: '10', name: 'Bạc Liêu' }, { id: '11', name: 'Bắc Ninh' }, { id: '12', name: 'Bến Tre' },
-      { id: '13', name: 'Bình Định' }, { id: '14', name: 'Bình Dương' }, { id: '15', name: 'Bình Phước' },
-      { id: '16', name: 'Bình Thuận' }, { id: '17', name: 'Cà Mau' }, { id: '18', name: 'Cao Bằng' },
-      { id: '19', name: 'Đắk Lắk' }, { id: '20', name: 'Đắk Nông' }
-    ]);
-
-    // Try to load from API if we have a token
-    const token = localStorage.getItem('authToken');
-    console.log('[ProfileComplete] Provinces token check:', {
-      hasToken: !!token,
-      tokenLength: token?.length || 0
-    });
-    
-    if (!token) {
-      console.log('No token found, using fallback data');
-      return;
-    }
-
     try {
-      console.log('[ProfileComplete] Fetching provinces from API...');
-      // Try the correct endpoint first
-      const response = await fetch('http://localhost:8080/api/v1/profile/addresses/provinces', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Load from third-party API (tinhthanhpho.com)
+      const provincesData = await addressService.getProvinces();
+      console.log('[ProfileComplete] Third-party API provinces:', provincesData);
       
-      console.log('[ProfileComplete] Provinces API response status:', response.status);
+      // Transform data to match our format
+      const transformedProvinces = provincesData.map(province => ({
+        id: province.code,
+        name: province.name,
+        type: province.type
+      }));
       
-      if (response.status === 401) {
-        console.log('Unauthorized, skipping provinces load');
-        return;
-      }
-      
-      if (response.status === 404) {
-        console.log('Address endpoint not found, using fallback data');
-        // Use fallback data for Vietnamese provinces
-        setProvinces([
-          { id: '01', name: 'Hà Nội' },
-          { id: '02', name: 'TP. Hồ Chí Minh' },
-          { id: '03', name: 'Đà Nẵng' },
-          { id: '04', name: 'Hải Phòng' },
-          { id: '05', name: 'Cần Thơ' },
-          { id: '06', name: 'An Giang' },
-          { id: '07', name: 'Bà Rịa - Vũng Tàu' },
-          { id: '08', name: 'Bắc Giang' },
-          { id: '09', name: 'Bắc Kạn' },
-          { id: '10', name: 'Bạc Liêu' },
-          { id: '11', name: 'Bắc Ninh' },
-          { id: '12', name: 'Bến Tre' },
-          { id: '13', name: 'Bình Định' },
-          { id: '14', name: 'Bình Dương' },
-          { id: '15', name: 'Bình Phước' },
-          { id: '16', name: 'Bình Thuận' },
-          { id: '17', name: 'Cà Mau' },
-          { id: '18', name: 'Cao Bằng' },
-          { id: '19', name: 'Đắk Lắk' },
-          { id: '20', name: 'Đắk Nông' }
-        ]);
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('[ProfileComplete] Provinces API response data:', data);
-      if (data.code === 1000) {
-        console.log('[ProfileComplete] Setting provinces:', data.result);
-        setProvinces(data.result || []);
-      } else {
-        console.log('[ProfileComplete] API returned non-1000 code:', data.code);
-      }
+      setProvinces(transformedProvinces);
+      setFilteredProvinces(transformedProvinces);
+      console.log('[ProfileComplete] Successfully loaded provinces from third-party API');
     } catch (error: any) {
-      console.error('[ProfileComplete] Error loading provinces:', error);
-      console.error('[ProfileComplete] Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      // Use fallback data on error
-      setProvinces([
-        { id: '01', name: 'Hà Nội' },
-        { id: '02', name: 'TP. Hồ Chí Minh' },
-        { id: '03', name: 'Đà Nẵng' },
-        { id: '04', name: 'Hải Phòng' },
-        { id: '05', name: 'Cần Thơ' }
-      ]);
+      console.error('[ProfileComplete] Error loading provinces from third-party API:', error);
+      
+      // Fallback to hardcoded data
+      const fallbackProvinces = [
+        { id: '01', name: 'Hà Nội' }, { id: '02', name: 'TP. Hồ Chí Minh' }, { id: '03', name: 'Đà Nẵng' },
+        { id: '04', name: 'Hải Phòng' }, { id: '05', name: 'Cần Thơ' }, { id: '06', name: 'An Giang' },
+        { id: '07', name: 'Bà Rịa - Vũng Tàu' }, { id: '08', name: 'Bắc Giang' }, { id: '09', name: 'Bắc Kạn' },
+        { id: '10', name: 'Bạc Liêu' }, { id: '11', name: 'Bắc Ninh' }, { id: '12', name: 'Bến Tre' },
+        { id: '13', name: 'Bình Định' }, { id: '14', name: 'Bình Dương' }, { id: '15', name: 'Bình Phước' },
+        { id: '16', name: 'Bình Thuận' }, { id: '17', name: 'Cà Mau' }, { id: '18', name: 'Cao Bằng' },
+        { id: '19', name: 'Đắk Lắk' }, { id: '20', name: 'Đắk Nông' }
+      ];
+      setProvinces(fallbackProvinces);
+      setFilteredProvinces(fallbackProvinces);
     }
   };
 
-  // Load districts when province changes
-  const loadDistricts = async (provinceId: string) => {
-    // Always load fallback data first
-    setDistricts([
-      { id: '001', name: 'Quận 1' },
-      { id: '002', name: 'Quận 2' },
-      { id: '003', name: 'Quận 3' },
-      { id: '004', name: 'Quận 4' },
-      { id: '005', name: 'Quận 5' },
-      { id: '006', name: 'Quận 6' },
-      { id: '007', name: 'Quận 7' },
-      { id: '008', name: 'Quận 8' },
-      { id: '009', name: 'Quận 9' },
-      { id: '010', name: 'Quận 10' }
-    ]);
-    setWards([]);
-
-    // Try to load from API if we have a token
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      console.log('No token found, using fallback data');
-      return;
-    }
-
+  // Load wards when province changes (Cấu trúc mới sau 1/7/2025)
+  const loadWardsByProvince = async (provinceId: string) => {
+    console.log('[ProfileComplete] Loading wards for province:', provinceId);
+    
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/profile/addresses/districts?provinceId=${provinceId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Load from third-party API (tinhthanhpho.com) - Cấu trúc mới
+      const wardsData = await addressService.getWardsByProvince(provinceId);
+      console.log('[ProfileComplete] Third-party API wards:', wardsData);
       
-      if (response.status === 401) {
-        console.log('Unauthorized, skipping districts load');
-        return;
-      }
+      // Transform data to match our format
+      const transformedWards = wardsData.map(ward => ({
+        id: ward.code,
+        name: ward.name,
+        type: ward.type
+      }));
       
-      if (response.status === 404) {
-        console.log('Districts endpoint not found, using fallback data');
-        // Use fallback data for districts
-        setDistricts([
-          { id: '001', name: 'Quận 1' },
-          { id: '002', name: 'Quận 2' },
-          { id: '003', name: 'Quận 3' },
-          { id: '004', name: 'Quận 4' },
-          { id: '005', name: 'Quận 5' }
-        ]);
-        setWards([]);
-        return;
-      }
+      setWards(transformedWards);
+      setFilteredWards(transformedWards);
+      console.log('[ProfileComplete] Successfully loaded wards from third-party API');
+    } catch (error: any) {
+      console.error('[ProfileComplete] Error loading wards from third-party API:', error);
       
-      const data = await response.json();
-      if (data.code === 1000) {
-        setDistricts(data.result || []);
-        setWards([]); // Clear wards when province changes
-      }
-    } catch (error) {
-      console.error('Error loading districts:', error);
-      // Use fallback data on error
-      setDistricts([
-        { id: '001', name: 'Quận 1' },
-        { id: '002', name: 'Quận 2' },
-        { id: '003', name: 'Quận 3' }
-      ]);
-      setWards([]);
-    }
-  };
-
-  // Load wards when district changes
-  const loadWards = async (districtId: string) => {
-    // Always load fallback data first
-    setWards([
-      { id: '001', name: 'Phường 1' },
-      { id: '002', name: 'Phường 2' },
-      { id: '003', name: 'Phường 3' },
-      { id: '004', name: 'Phường 4' },
-      { id: '005', name: 'Phường 5' },
-      { id: '006', name: 'Phường 6' },
-      { id: '007', name: 'Phường 7' },
-      { id: '008', name: 'Phường 8' },
-      { id: '009', name: 'Phường 9' },
-      { id: '010', name: 'Phường 10' }
-    ]);
-
-    // Try to load from API if we have a token
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      console.log('No token found, using fallback data');
-      return;
-    }
-
-    try {
-      const response = await fetch(`http://localhost:8080/api/v1/profile/addresses/wards?districtId=${districtId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.status === 401) {
-        console.log('Unauthorized, skipping wards load');
-        return;
-      }
-      
-      if (response.status === 404) {
-        console.log('Wards endpoint not found, using fallback data');
-        // Use fallback data for wards
-        setWards([
-          { id: '001', name: 'Phường 1' },
-          { id: '002', name: 'Phường 2' },
-          { id: '003', name: 'Phường 3' },
-          { id: '004', name: 'Phường 4' },
-          { id: '005', name: 'Phường 5' }
-        ]);
-        return;
-      }
-      
-      const data = await response.json();
-      if (data.code === 1000) {
-        setWards(data.result || []);
-      }
-    } catch (error) {
-      console.error('Error loading wards:', error);
-      // Use fallback data on error
-      setWards([
-        { id: '001', name: 'Phường 1' },
-        { id: '002', name: 'Phường 2' },
-        { id: '003', name: 'Phường 3' }
-      ]);
+      // Fallback to hardcoded data
+      const fallbackWards = [
+        { id: '00070', name: 'Hoàn Kiếm' },
+        { id: '00071', name: 'Ba Đình' },
+        { id: '00072', name: 'Tây Hồ' },
+        { id: '00073', name: 'Long Biên' },
+        { id: '00074', name: 'Cầu Giấy' }
+      ];
+      setWards(fallbackWards);
+      setFilteredWards(fallbackWards);
     }
   };
 
@@ -387,19 +260,14 @@ export default function ProfileCompletePage() {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
 
-    // Handle address cascading
+    // Handle address cascading (Cấu trúc mới: Province → Ward)
     if (field === 'province') {
-      setFormData(prev => ({ ...prev, district: '', ward: '' }));
-      setDistricts([]);
-      setWards([]);
-      if (value) {
-        loadDistricts(value);
-      }
-    } else if (field === 'district') {
       setFormData(prev => ({ ...prev, ward: '' }));
       setWards([]);
+      setFilteredWards([]);
+      setWardSearch(''); // Reset ward search
       if (value) {
-        loadWards(value);
+        loadWardsByProvince(value);
       }
     }
 
@@ -444,7 +312,7 @@ export default function ProfileCompletePage() {
                 {errors.fullName && (
                   <p className="text-red-400 text-sm">{errors.fullName}</p>
                 )}
-              </div>
+      </div>
 
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber" className="text-purple-200">Số điện thoại</Label>
@@ -455,7 +323,7 @@ export default function ProfileCompletePage() {
                   placeholder="Nhập số điện thoại"
                   className="bg-black/30 border-purple-500/30 text-white"
                 />
-              </div>
+      </div>
 
               <div className="space-y-2">
                 <Label htmlFor="birthDate" className="text-purple-200">Ngày sinh</Label>
@@ -469,7 +337,7 @@ export default function ProfileCompletePage() {
                 {errors.birthDate && (
                   <p className="text-red-400 text-sm">{errors.birthDate}</p>
                 )}
-              </div>
+      </div>
 
               <div className="space-y-2">
                 <Label htmlFor="school" className="text-purple-200">Trường học</Label>
@@ -480,7 +348,7 @@ export default function ProfileCompletePage() {
                   placeholder="Nhập tên trường"
                   className="bg-black/30 border-purple-500/30 text-white"
                 />
-              </div>
+      </div>
 
               <div className="space-y-2">
                 <Label htmlFor="grade" className="text-purple-200">Lớp</Label>
@@ -503,7 +371,7 @@ export default function ProfileCompletePage() {
                     <SelectItem value="12">Lớp 12</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+      </div>
 
       </div>
 
@@ -526,59 +394,74 @@ export default function ProfileCompletePage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="province" className="text-purple-200">Tỉnh/Thành phố *</Label>
-                  <Select value={formData.province} onValueChange={(value) => handleInputChange('province', value)}>
-                    <SelectTrigger className="bg-black/30 border-purple-500/30 text-white">
-                      <SelectValue placeholder="Chọn tỉnh/thành phố" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.isArray(provinces) && provinces.map((province) => (
-                        <SelectItem key={province.id} value={province.id}>
-                          {province.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      placeholder="Tìm kiếm tỉnh/thành phố..."
+                      value={provinceSearch}
+                      onChange={(e) => setProvinceSearch(e.target.value)}
+                      onFocus={() => setShowProvinceDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowProvinceDropdown(false), 200)}
+                      className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400"
+                    />
+                    {(showProvinceDropdown || provinceSearch) && (
+                      <div className="absolute top-full left-0 right-0 z-10 bg-black/90 border border-purple-500/30 rounded-md max-h-60 overflow-y-auto">
+                        {filteredProvinces.map((province) => (
+                          <div
+                            key={province.id}
+                            className="px-3 py-2 hover:bg-purple-500/20 cursor-pointer text-white"
+                          onClick={() => {
+                            handleInputChange('province', province.id);
+                            setProvinceSearch(province.name);
+                            setShowProvinceDropdown(false);
+                          }}
+                          >
+                            {province.name}
+                          </div>
+                        ))}
+                        {filteredProvinces.length === 0 && provinceSearch && (
+                          <div className="px-3 py-2 text-gray-400">Không tìm thấy tỉnh/thành phố</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
       </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="district" className="text-purple-200">Quận/Huyện *</Label>
-                  <Select 
-                    value={formData.district} 
-                    onValueChange={(value) => handleInputChange('district', value)}
+              <div className="space-y-2">
+                <Label htmlFor="ward" className="text-purple-200">Phường/Xã *</Label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder={formData.province ? "Tìm kiếm phường/xã..." : "Chọn tỉnh/thành phố trước"}
+                    value={wardSearch}
+                    onChange={(e) => setWardSearch(e.target.value)}
+                    onFocus={() => setShowWardDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowWardDropdown(false), 200)}
                     disabled={!formData.province}
-                  >
-                    <SelectTrigger className="bg-black/30 border-purple-500/30 text-white">
-                      <SelectValue placeholder="Chọn quận/huyện" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.isArray(districts) && districts.map((district) => (
-                        <SelectItem key={district.id} value={district.id}>
-                          {district.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ward" className="text-purple-200">Phường/Xã *</Label>
-                  <Select 
-                    value={formData.ward} 
-                    onValueChange={(value) => handleInputChange('ward', value)}
-                    disabled={!formData.district}
-                  >
-                    <SelectTrigger className="bg-black/30 border-purple-500/30 text-white">
-                      <SelectValue placeholder="Chọn phường/xã" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.isArray(wards) && wards.map((ward) => (
-                        <SelectItem key={ward.id} value={ward.id}>
+                    className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400 disabled:opacity-50"
+                  />
+                  {formData.province && (showWardDropdown || wardSearch) && (
+                    <div className="absolute top-full left-0 right-0 z-10 bg-black/90 border border-purple-500/30 rounded-md max-h-60 overflow-y-auto">
+                      {filteredWards.map((ward) => (
+                        <div
+                          key={ward.id}
+                          className="px-3 py-2 hover:bg-purple-500/20 cursor-pointer text-white"
+                          onClick={() => {
+                            handleInputChange('ward', ward.id);
+                            setWardSearch(ward.name);
+                            setShowWardDropdown(false);
+                          }}
+                        >
                           {ward.name}
-                        </SelectItem>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      {filteredWards.length === 0 && wardSearch && (
+                        <div className="px-3 py-2 text-gray-400">Không tìm thấy phường/xã</div>
+                      )}
+                    </div>
+                  )}
+      </div>
+      </div>
         </div>
 
               <div className="space-y-2">
