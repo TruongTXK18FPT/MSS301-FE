@@ -4,6 +4,8 @@ import { Toaster } from '@/components/ui/toaster';
 import CosmicBackground from '@/components/cosmic-background';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
+import { AuthProvider } from '@/context/auth-context';
+import { ProfileBannerWrapper } from '@/components/ProfileBannerWrapper';
 
 export const metadata: Metadata = {
   title: 'MathMind',
@@ -26,9 +28,12 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <CosmicBackground />
         <div className="relative z-10 flex min-h-screen flex-col">
-          <Navbar />
-          <main className="flex-grow">{children}</main>
-          <Footer />
+          <AuthProvider>
+            <Navbar />
+            <ProfileBannerWrapper />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+          </AuthProvider>
         </div>
         <Toaster />
       </body>

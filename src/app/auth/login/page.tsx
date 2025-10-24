@@ -6,42 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { authService } from '@/lib/services';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from "react";
+import { AuthAPI } from "@/services/auth.service";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Check for success message from register
-  useEffect(() => {
-    const message = searchParams.get('message');
-    if (message) {
-      setSuccess(message);
-    }
-  }, [searchParams]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      await authService.login({ email, password });
-      router.push('/profile');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { toast } = useToast();
+  const { login } = useAuth();
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
@@ -91,17 +68,22 @@ export default function LoginPage() {
         </CardHeader>
         
         <CardContent className="space-y-6 relative z-10">
-          {success && (
-            <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 text-green-200 text-sm">
-              {success}
-            </div>
-          )}
-          {error && (
-            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-red-200 text-sm">
-              {error}
-            </div>
-          )}
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form className="space-y-6" onSubmit={async (e) => {
+            e.preventDefault();
+            const res = await AuthAPI.login({ email, password });
+            if (res.code === 1000 && res.result?.token) {
+              await login(res.result.token);
+              // After login, if profile incomplete and role is STUDENT/GUARDIAN, show prompt on home
+              router.push("/");
+            } else {
+              const message = res.message || "Đăng nhập thất bại";
+              if (message.includes("Email chưa được xác thực")) {
+                // redirect to OTP page later when created
+                router.push("/auth/verify-otp?email=" + encodeURIComponent(email));
+              }
+              toast({ description: message, variant: "destructive" });
+            }
+          }}>
             <div className="space-y-3">
               <Label htmlFor="email" className="text-purple-200 font-medium flex items-center gap-2">
                 <Mail className="size-4" />

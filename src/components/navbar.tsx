@@ -6,7 +6,8 @@ import { Button } from './ui/button';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
-import { Menu, Home, Map, Brain, Target, GraduationCap, Bot } from 'lucide-react';
+import { Menu, Home, Map, Brain, Target, GraduationCap, Bot, User } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 
 const navLinks = [
   { href: '/', label: 'Trang chủ', icon: Home },
@@ -38,6 +39,7 @@ const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; ico
 };
 
 const Navbar = () => {
+  const { token, username, logout } = useAuth();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-surface/80 backdrop-blur-lg">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -51,14 +53,31 @@ const Navbar = () => {
         </div>
         
         <div className="hidden items-center gap-4 md:flex">
-          <Link href="/auth/login" className="text-sm font-medium text-ink-secondary transition-colors hover:text-ink-white">
-            Đăng nhập
-          </Link>
-          <Link href="/auth/register">
-            <Button className="rounded-full bg-gradient-to-r from-violet to-teal text-white shadow-md transition-transform hover:scale-105">
-              🚀 Bắt đầu học
-            </Button>
-          </Link>
+          {!token ? (
+            <>
+              <Link href="/auth/login">
+                <Button variant="ghost" className="text-ink-secondary hover:text-ink-white">
+                  Đăng nhập
+                </Button>
+              </Link>
+              <Link href="/auth/register">
+                <Button className="rounded-full bg-gradient-to-r from-violet to-teal text-white shadow-md transition-transform hover:scale-105">
+                  🚀 Bắt đầu học
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/profile">
+                <Button variant="ghost" size="icon" className="text-ink-secondary hover:text-ink-white">
+                  <User className="size-5" />
+                </Button>
+              </Link>
+              <Button variant="outline" onClick={logout}>
+                Đăng xuất
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="md:hidden">
@@ -82,14 +101,30 @@ const Navbar = () => {
                             ))}
                         </div>
                         <div className="mt-auto p-4 border-t border-white/10 space-y-4">
-                            <Link href="/auth/login" className="block w-full text-center rounded-md px-3 py-2 text-base font-medium text-ink-secondary hover:bg-white/5 hover:text-ink-white">
-                                Đăng nhập
-                            </Link>
-                            <Link href="/auth/register" className='w-full'>
-                                <Button className="w-full rounded-full bg-gradient-to-r from-violet to-teal text-white shadow-md transition-transform hover:scale-105">
-                                🚀 Bắt đầu học
+                          {!token ? (
+                            <>
+                              <Link href="/auth/login" className="w-full">
+                                <Button variant="ghost" className="w-full text-ink-secondary hover:bg-white/5 hover:text-ink-white">
+                                  Đăng nhập
                                 </Button>
-                            </Link>
+                              </Link>
+                              <Link href="/auth/register" className='w-full'>
+                                  <Button className="w-full rounded-full bg-gradient-to-r from-violet to-teal text-white shadow-md transition-transform hover:scale-105">
+                                  🚀 Bắt đầu học
+                                  </Button>
+                              </Link>
+                            </>
+                          ) : (
+                            <>
+                              <Link href="/profile" className="block w-full text-center rounded-md px-3 py-2 text-base font-medium text-ink-secondary hover:bg-white/5 hover:text-ink-white">
+                                <User className="inline-block size-5 mr-2" />
+                                Hồ sơ
+                              </Link>
+                              <Button className="w-full" variant="outline" onClick={logout}>
+                                Đăng xuất
+                              </Button>
+                            </>
+                          )}
                         </div>
                     </div>
                 </SheetContent>
