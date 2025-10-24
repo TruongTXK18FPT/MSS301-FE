@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -171,10 +172,12 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm">
-                <Edit className="h-4 w-4 mr-2" />
-                Chỉnh sửa
-              </Button>
+              <Link href="/profile/complete">
+                <Button variant="outline" size="sm">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Chỉnh sửa
+                </Button>
+              </Link>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <Settings className="h-4 w-4 mr-2" />
                 Đăng xuất

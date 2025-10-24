@@ -1,5 +1,6 @@
 import { apiFetch, API_BASE_URL, type ApiResponse } from "@/lib/api";
 import { IntrospectResponse, LoginRequest, LoginResponse, RegisterRequest, VerifyEmailRequest, ProfileCompletionRequest, ProfileStatusResponse } from "@/types/auth";
+import { profileService } from "@/lib/services/profileService";
 
 export const AuthAPI = {
   login: async (data: LoginRequest) => {
@@ -45,9 +46,20 @@ export const AuthAPI = {
     });
   },
   getProfileStatus: async () => {
-    return apiFetch<ProfileStatusResponse>(`/authenticate/users/my-profile-status`, {
-      method: "GET",
-    });
+    try {
+      const result = await profileService.getProfileCompletionStatus();
+      return {
+        code: 1000,
+        message: "Success",
+        result: {
+          profileCompleted: result.profileCompleted,
+          userType: result.userType || "STUDENT",
+          email: result.email || ""
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
   },
   resendOTP: async (email: string) => {
     return apiFetch<unknown>(`/authenticate/users/resend-otp?email=${encodeURIComponent(email)}`, {

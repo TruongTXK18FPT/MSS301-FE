@@ -1,41 +1,23 @@
-import { authService } from './services';
+import { useAuth } from '@/context/auth-context';
 
 /**
- * Kiểm tra xem user đã đăng nhập chưa
+ * Kiểm tra authentication và redirect nếu cần
  */
-export const isAuthenticated = (): boolean => {
-  return authService.isAuthenticated();
-};
-
-/**
- * Lấy thông tin user hiện tại
- */
-export const getCurrentUser = () => {
-  return authService.getCurrentUserFromStorage();
-};
-
-/**
- * Redirect đến trang login nếu chưa đăng nhập
- */
-export const requireAuth = (): boolean => {
-  if (!isAuthenticated()) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login';
-    }
+export function requireAuth(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    window.location.href = '/auth/login';
     return false;
   }
+  
   return true;
-};
+}
 
 /**
- * Redirect đến trang profile nếu đã đăng nhập
+ * Hook để sử dụng auth context
  */
-export const redirectIfAuthenticated = (): boolean => {
-  if (isAuthenticated()) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/profile';
-    }
-    return true;
-  }
-  return false;
-};
+export function useAuthContext() {
+  return useAuth();
+}

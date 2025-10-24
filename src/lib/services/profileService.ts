@@ -2,9 +2,15 @@ import { profileApi } from './axios';
 import { 
   StudentProfileRequest, 
   StudentProfileResponse, 
-  ProfileCompletionStatusResponse,
-  ApiResponse
+  ProfileCompletionStatusResponse
 } from '../dto';
+
+// Define ApiResponse locally
+interface ApiResponse<T> {
+  code: number;
+  message: string;
+  result: T | null;
+}
 
 class ProfileService {
   /**
@@ -12,7 +18,19 @@ class ProfileService {
    */
   async getCurrentProfile(): Promise<StudentProfileResponse> {
     try {
-      const response = await profileApi.get<ApiResponse<StudentProfileResponse>>('/profile/me');
+      const response = await profileApi.get<ApiResponse<StudentProfileResponse>>('/me');
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy thông tin profile');
+    }
+  }
+
+  /**
+   * Lấy thông tin profile hiện tại (alias for getCurrentProfile)
+   */
+  async getCurrentUserProfile(): Promise<StudentProfileResponse> {
+    try {
+      const response = await profileApi.get<ApiResponse<StudentProfileResponse>>('/me');
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Không thể lấy thông tin profile');
@@ -24,7 +42,7 @@ class ProfileService {
    */
   async updateCurrentProfile(profileData: StudentProfileRequest): Promise<StudentProfileResponse> {
     try {
-      const response = await profileApi.put<ApiResponse<StudentProfileResponse>>('/profile/me', profileData);
+      const response = await profileApi.put<ApiResponse<StudentProfileResponse>>('/me', profileData);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Cập nhật profile thất bại');
@@ -36,10 +54,24 @@ class ProfileService {
    */
   async getProfileCompletionStatus(): Promise<ProfileCompletionStatusResponse> {
     try {
-      const response = await profileApi.get<ApiResponse<ProfileCompletionStatusResponse>>('/profile/completion-status');
-      return response.data.result!;
+      const response = await profileApi.get<ApiResponse<ProfileCompletionStatusResponse>>('/completion-status');
+      if (!response.data.result) {
+        // Return default values if no profile exists
+        return {
+          profileCompleted: false,
+          userType: "STUDENT",
+          email: ""
+        };
+      }
+      return response.data.result;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Không thể lấy trạng thái profile');
+      console.error('Profile completion status error:', error);
+      // Return default values on error
+      return {
+        profileCompleted: false,
+        userType: "STUDENT", 
+        email: ""
+      };
     }
   }
 

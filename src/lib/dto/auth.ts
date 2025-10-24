@@ -1,54 +1,25 @@
 // Auth DTOs
+export interface UserResponse {
+  id: string;
+  email: string;
+  username: string;
+  role: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface RegisterRequest {
-  fullName: string;
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  userType: string; // STUDENT, TEACHER, GUARDIAN
-}
-
-export interface AuthenticationResponse {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresIn: number;
+export interface LoginResponse {
+  token: string;
   user: UserResponse;
 }
 
-export interface UserResponse {
-  id: number;
+export interface RegisterRequest {
   email: string;
-  username: string;
-  status: string;
-  emailVerified: boolean;
-  profileCompleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt?: string;
-  phone?: string;
-  roleId?: number;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  result?: T;
-  error?: string;
-  code?: string;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-export interface LogoutRequest {
-  refreshToken: string;
+  password: string;
+  fullName: string;
 }
 
 export interface VerifyEmailRequest {
@@ -56,13 +27,26 @@ export interface VerifyEmailRequest {
   otp: string;
 }
 
-export interface ResetPasswordRequest {
-  email: string;
-  otp: string;
-  newPassword: string;
+export interface ProfileCompletionRequest {
+  fullName: string;
+  phoneNumber?: string;
+  birthDate?: string;
+  school?: string;
+  grade?: string;
+  learningGoals?: string;
+  subjectsOfInterest?: string;
 }
 
-export interface PasswordCreationRequest {
-  userId: string;
-  password: string;
+export interface ProfileStatusResponse {
+  profileCompleted: boolean;
+  userType: string;
+  email: string;
+}
+
+export interface IntrospectResponse {
+  valid: boolean;
+  id?: string;
+  email?: string;
+  role?: string;
+  passwordSetupRequired?: boolean;
 }

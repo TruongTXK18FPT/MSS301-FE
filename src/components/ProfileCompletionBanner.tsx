@@ -3,12 +3,15 @@
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, X } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/context/auth-context";
 
 export function ProfileCompletionBanner() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState(false);
+  const { profileCompleted } = useAuth();
 
-  if (dismissed) return null;
+  // Don't show if profile is completed or banner is dismissed
+  if (dismissed || profileCompleted) return null;
 
   return (
     <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-pink-500/20 border-b border-amber-400/30 backdrop-blur-sm">

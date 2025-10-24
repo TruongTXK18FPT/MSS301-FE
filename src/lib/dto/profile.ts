@@ -17,6 +17,10 @@ export interface StudentProfileResponse {
   dob?: string;
   phoneNumber?: string;
   address?: string;
+  grade?: string;
+  school?: string;
+  learningGoals?: string;
+  subjectsOfInterest?: string;
   bio?: string;
   avatarUrl?: string;
   profileCompleted: boolean;

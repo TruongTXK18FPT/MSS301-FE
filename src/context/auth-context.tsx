@@ -11,10 +11,12 @@ type AuthState = {
   username: string | null;
   role: string | null;
   profileCompleted: boolean;
+  passwordSetupRequired: boolean;
   loading: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
   checkProfileStatus: () => Promise<void>;
+  checkPasswordSetup: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -27,42 +29,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [username, setUsername] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [profileCompleted, setProfileCompleted] = useState<boolean>(true);
+  const [passwordSetupRequired, setPasswordSetupRequired] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   const checkProfileStatus = useCallback(async () => {
     try {
+      console.log('[Auth] Checking profile status...');
       const res = await AuthAPI.getProfileStatus();
       if (res.code === 1000 && res.result) {
+        console.log('[Auth] Profile status:', res.result.profileCompleted);
         setProfileCompleted(res.result.profileCompleted);
+      } else {
+        console.log('[Auth] Profile status check failed:', res.message);
+        setProfileCompleted(false); // Default to not completed if check fails
       }
     } catch (error) {
-      console.error("Failed to check profile status:", error);
+      console.error("[Auth] Failed to check profile status:", error);
+      // Don't immediately fail - might be a temporary network issue
+      console.log('[Auth] Profile status check failed, will retry later...');
+      setProfileCompleted(false); // Default to not completed if check fails
+      
+      // Show notification instead of redirecting
+      console.log('[Auth] Profile not completed - showing notification instead of redirect');
     }
   }, []);
 
+  const checkPasswordSetup = useCallback(async () => {
+    try {
+      console.log('[Auth] Checking password setup requirement...');
+      const res = await AuthAPI.introspect(token || '');
+      if (res.code === 1000 && res.result) {
+        setPasswordSetupRequired((res.result as any).passwordSetupRequired || false);
+      }
+    } catch (error) {
+      console.error("[Auth] Failed to check password setup:", error);
+      setPasswordSetupRequired(false);
+    }
+  }, [token]);
+
   const performIntrospect = useCallback(async (jwt: string) => {
-    // Save token to localStorage first
-    localStorage.setItem("authToken", jwt);
-    setToken(jwt);
-    
-    const res = await AuthAPI.introspect(jwt);
-    if (res.code === 1000 && res.result?.valid) {
-      setId(res.result.id ?? null);
-      setEmail(res.result.email ?? null);
-      setUsername(res.result.email ?? null); // Use email as username for now
-      setRole(res.result.role ?? null);
+    try {
+      console.log('[Auth] Performing token introspect...');
+      const res = await AuthAPI.introspect(jwt);
       
-      // Check profile status after successful introspect
-      await checkProfileStatus();
-    } else {
-      // invalid token -> cleanup
-      localStorage.removeItem("authToken");
-      setToken(null);
-      setId(null);
-      setEmail(null);
-      setUsername(null);
-      setRole(null);
-      setProfileCompleted(true);
+      if (res.code === 1000 && res.result?.valid) {
+        console.log('[Auth] Token is valid, setting user info...');
+        setId(res.result.id ?? null);
+        setEmail(res.result.email ?? null);
+        setUsername(res.result.email ?? null); // Use email as username for now
+        setRole(res.result.role ?? null);
+        
+        // Check profile status and password setup after successful introspect
+        await checkProfileStatus();
+        await checkPasswordSetup();
+      } else {
+        console.log('[Auth] Token is invalid, cleaning up...');
+        // invalid token -> cleanup
+        localStorage.removeItem("authToken");
+        setToken(null);
+        setId(null);
+        setEmail(null);
+        setUsername(null);
+        setRole(null);
+        setProfileCompleted(true);
+      }
+    } catch (error) {
+      console.error('[Auth] Introspect failed:', error);
+      // Only clear token if it's definitely invalid, not on network errors
+      if ((error as any)?.message?.includes('Token invalid') || (error as any)?.message?.includes('Token validation failed')) {
+        console.log('[Auth] Token is definitely invalid, cleaning up...');
+        localStorage.removeItem("authToken");
+        setToken(null);
+        setId(null);
+        setEmail(null);
+        setUsername(null);
+        setRole(null);
+        setProfileCompleted(true);
+      } else {
+        console.log('[Auth] Network or other error, keeping token for retry...');
+        // Don't clear token on network errors
+      }
     }
   }, [checkProfileStatus]);
 
@@ -72,10 +118,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const urlToken = urlParams.get('token');
     
     if (urlToken) {
+      console.log('[Auth] Found token in URL, processing...');
       // Clean URL to remove token parameter first
       window.history.replaceState({}, document.title, window.location.pathname);
       
-      // Perform introspect - it will handle saving token to localStorage
+      // Save token to localStorage immediately
+      localStorage.setItem("authToken", urlToken);
+      setToken(urlToken);
+      
+      // Perform introspect - it will handle user info extraction
       performIntrospect(urlToken).finally(() => setLoading(false));
       return;
     }
@@ -83,9 +134,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check localStorage for existing token
     const jwt = localStorage.getItem("authToken");
     if (!jwt) {
+      console.log('[Auth] No token found in localStorage');
       setLoading(false);
       return;
     }
+    
+    console.log('[Auth] Found token in localStorage, validating...');
     setToken(jwt);
     performIntrospect(jwt).finally(() => setLoading(false));
   }, [performIntrospect]);
@@ -126,11 +180,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     username, 
     role, 
     profileCompleted, 
+    passwordSetupRequired,
     loading, 
     login, 
     logout, 
-    checkProfileStatus 
-  }), [token, id, email, username, role, profileCompleted, loading, login, logout, checkProfileStatus]);
+    checkProfileStatus,
+    checkPasswordSetup
+  }), [token, id, email, username, role, profileCompleted, passwordSetupRequired, loading, login, logout, checkProfileStatus, checkPasswordSetup]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

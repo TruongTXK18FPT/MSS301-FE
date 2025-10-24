@@ -31,7 +31,7 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     if (!isServer) {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('authToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -50,12 +50,12 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token hết hạn, xóa token và redirect về login
-      if (!isServer) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/auth/login';
-      }
+      console.log('[Axios] 401 Unauthorized - not clearing token immediately');
+      // Don't clear token immediately - let the calling code decide
+      // localStorage.removeItem('authToken');
+      // localStorage.removeItem('access_token');
+      // localStorage.removeItem('refresh_token');
+      // window.location.href = '/auth/login';
     }
     return Promise.reject(error);
   }
@@ -132,7 +132,7 @@ export const gatewayApi = axios.create({
   api.interceptors.request.use(
     (config) => {
       if (!isServer) {
-        const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('authToken');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -151,11 +151,12 @@ export const gatewayApi = axios.create({
     },
     (error) => {
       if (error.response?.status === 401) {
-        if (!isServer) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/auth/login';
-        }
+        console.log('[Axios] 401 Unauthorized - not clearing token immediately');
+        // Don't clear token immediately - let the calling code decide
+        // localStorage.removeItem('authToken');
+        // localStorage.removeItem('access_token');
+        // localStorage.removeItem('refresh_token');
+        // window.location.href = '/auth/login';
       }
       return Promise.reject(error);
     }
