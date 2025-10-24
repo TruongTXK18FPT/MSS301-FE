@@ -54,6 +54,17 @@ export const AuthAPI = {
       method: "POST",
     });
   },
+  logout: async (token: string) => {
+    return apiFetch<unknown>(`/authenticate/auth/logout`, {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+  },
+  getMe: async () => {
+    return apiFetch<unknown>(`/authenticate/users/me`, {
+      method: "GET",
+    });
+  },
 };
 
 

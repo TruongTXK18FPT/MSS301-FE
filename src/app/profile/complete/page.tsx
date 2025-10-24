@@ -14,6 +14,7 @@ import { Loader2, CheckCircle, User, Phone, Calendar, School, Target, BookOpen, 
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ProfileCompletionRequest, StudentProfileData, TeacherProfileData, GuardianProfileData } from "@/types/auth";
 
 // Student Schema
 const studentSchema = z.object({
@@ -113,7 +114,7 @@ function StudentForm({ loading, setLoading }: { loading: boolean; setLoading: (v
   const onSubmit = async (values: any) => {
     setLoading(true);
     try {
-      const res = await AuthAPI.completeProfile({
+      const payload: ProfileCompletionRequest = {
         userType: "STUDENT",
         data: {
           phone: values.phone,
@@ -122,8 +123,9 @@ function StudentForm({ loading, setLoading }: { loading: boolean; setLoading: (v
           grade: values.grade,
           learningGoals: values.learningGoals,
           subjectsOfInterest: values.subjectsOfInterest,
-        },
-      });
+        } as StudentProfileData,
+      };
+      const res = await AuthAPI.completeProfile(payload);
 
       if (res.code === 1000) {
         toast({ description: "✅ Hoàn thiện hồ sơ thành công!" });
@@ -202,7 +204,7 @@ function TeacherForm({ loading, setLoading }: { loading: boolean; setLoading: (v
   const onSubmit = async (values: any) => {
     setLoading(true);
     try {
-      const res = await AuthAPI.completeProfile({
+      const payload: ProfileCompletionRequest = {
         userType: "TEACHER",
         data: {
           phone: values.phone,
@@ -212,8 +214,9 @@ function TeacherForm({ loading, setLoading }: { loading: boolean; setLoading: (v
           yearsOfExperience: values.yearsOfExperience ? parseInt(values.yearsOfExperience) : undefined,
           qualifications: values.qualifications,
           bio: values.bio,
-        },
-      });
+        } as TeacherProfileData,
+      };
+      const res = await AuthAPI.completeProfile(payload);
 
       if (res.code === 1000) {
         toast({ description: "✅ Hoàn thiện hồ sơ thành công!" });
@@ -299,7 +302,7 @@ function GuardianForm({ loading, setLoading }: { loading: boolean; setLoading: (
   const onSubmit = async (values: any) => {
     setLoading(true);
     try {
-      const res = await AuthAPI.completeProfile({
+      const payload: ProfileCompletionRequest = {
         userType: "GUARDIAN",
         data: {
           phone: values.phone,
@@ -307,8 +310,9 @@ function GuardianForm({ loading, setLoading }: { loading: boolean; setLoading: (
           relationship: values.relationship,
           studentEmail: values.studentEmail || undefined,
           studentPhone: values.studentPhone || undefined,
-        },
-      });
+        } as GuardianProfileData,
+      };
+      const res = await AuthAPI.completeProfile(payload);
 
       if (res.code === 1000) {
         toast({ description: "✅ Hoàn thiện hồ sơ thành công!" });

@@ -12,15 +12,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { RegisterRequest } from "@/types/auth";
 
 const schema = z.object({
   fullName: z.string().min(1, "Vui lòng nhập họ tên"),
-  username: z.string().min(3, "Tên đăng nhập tối thiểu 3 ký tự"),
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
   confirmPassword: z.string().min(6, "Vui lòng xác nhận mật khẩu"),
   studentClass: z.string().min(1, "Vui lòng nhập lớp hiện tại"),
-  learningGoals: z.string().min(1, "Vui lòng nhập mục tiêu học tập"),
 }).refine((d) => d.password === d.confirmPassword, { message: "Mật khẩu không khớp", path: ["confirmPassword"] });
 
 type StudentRegisterForm = z.infer<typeof schema>;
@@ -41,13 +40,12 @@ export default function StudentRegisterPage() {
         <CardContent>
           <form className="space-y-5" onSubmit={handleSubmit(async (values) => {
             setSubmitting(true);
-            const payload = {
+            const payload: RegisterRequest = {
               fullName: values.fullName,
-              username: values.username,
               email: values.email,
               password: values.password,
               confirmPassword: values.confirmPassword,
-              userType: 'STUDENT' as const,
+              userType: 'STUDENT',
             };
             const res = await AuthAPI.register(payload);
             if (res.code === 1000) {
@@ -62,11 +60,6 @@ export default function StudentRegisterPage() {
               <Label>Họ và Tên</Label>
               <Input placeholder="Nguyễn Văn A" {...register('fullName')} />
               {errors.fullName && <p className="text-sm text-red-400">{errors.fullName.message}</p>}
-            </div>
-            <div className="space-y-3">
-              <Label>Tên đăng nhập</Label>
-              <Input placeholder="username123" {...register('username')} />
-              {errors.username && <p className="text-sm text-red-400">{errors.username.message}</p>}
             </div>
             <div className="space-y-3">
               <Label>Email</Label>
@@ -87,11 +80,6 @@ export default function StudentRegisterPage() {
               <Label>Lớp hiện tại</Label>
               <Input placeholder="VD: 10A1" {...register('studentClass')} />
               {errors.studentClass && <p className="text-sm text-red-400">{errors.studentClass.message}</p>}
-            </div>
-            <div className="space-y-3">
-              <Label>Mục tiêu học tập</Label>
-              <Textarea placeholder="VD: Ôn thi học sinh giỏi, cải thiện điểm hình học..." {...register('learningGoals')} />
-              {errors.learningGoals && <p className="text-sm text-red-400">{errors.learningGoals.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>Tạo tài khoản</Button>
           </form>

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { RegisterRequest } from "@/types/auth";
 
 const schema = z.object({
   name: z.string().min(1, "Vui lòng nhập họ tên"),
@@ -47,16 +48,15 @@ export default function TeacherRegisterPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-5" onSubmit={handleSubmit(async (values) => {
-            const payload = {
-              username: values.name || values.email.split('@')[0],
+            const payload: RegisterRequest = {
               fullName: values.name,
               email: values.email,
               password: values.password,
               confirmPassword: values.confirmPassword,
-              userType: 'TEACHER' as const,
+              userType: 'TEACHER',
               // Teacher full profile is captured here but base register only needs basic fields.
               // We'll still send base payload for registration, and the rest will be sent via complete-profile after login when approved.
-            } as const;
+            };
             const res = await AuthAPI.register(payload);
             if (res.code === 1000) {
               toast({ description: 'Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.' });

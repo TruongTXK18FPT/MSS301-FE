@@ -14,7 +14,6 @@ export interface LoginResponse {
 
 export interface RegisterRequest {
   fullName: string;
-  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -31,7 +30,6 @@ export interface IntrospectResponse {
   valid: boolean;
   email: string;
   id: string;
-  username: string;
   role?: string;
   userId?: string;
   scope?: string;
@@ -60,7 +58,6 @@ export interface ForgotPasswordRequest {
 export interface ProfileStatusResponse {
   profileCompleted: boolean;
   userType: string;
-  username: string;
   email: string;
 }
 

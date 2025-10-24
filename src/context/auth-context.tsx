@@ -41,12 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const performIntrospect = useCallback(async (jwt: string) => {
+    // Save token to localStorage first
+    localStorage.setItem("authToken", jwt);
+    setToken(jwt);
+    
     const res = await AuthAPI.introspect(jwt);
     if (res.code === 1000 && res.result?.valid) {
       setId(res.result.id ?? null);
       setEmail(res.result.email ?? null);
-      setUsername(res.result.username ?? null);
+      setUsername(res.result.email ?? null); // Use email as username for now
       setRole(res.result.role ?? null);
+      
       // Check profile status after successful introspect
       await checkProfileStatus();
     } else {
@@ -62,6 +67,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [checkProfileStatus]);
 
   useEffect(() => {
+    // Check for token in URL parameters first (for OAuth callback)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    
+    if (urlToken) {
+      // Clean URL to remove token parameter first
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Perform introspect - it will handle saving token to localStorage
+      performIntrospect(urlToken).finally(() => setLoading(false));
+      return;
+    }
+    
+    // Check localStorage for existing token
     const jwt = localStorage.getItem("authToken");
     if (!jwt) {
       setLoading(false);
@@ -78,16 +97,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await checkProfileStatus();
   }, [performIntrospect, checkProfileStatus]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("authToken");
-    setToken(null);
-    setId(null);
-    setEmail(null);
-    setUsername(null);
-    setRole(null);
-    setProfileCompleted(true);
-    router.push("/auth/login");
-  }, [router]);
+  const logout = useCallback(async () => {
+    try {
+      // Call backend logout API if token exists
+      if (token) {
+        await AuthAPI.logout(token);
+      }
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+      // Continue with local logout even if API call fails
+    } finally {
+      // Clear local storage and state
+      localStorage.removeItem("authToken");
+      setToken(null);
+      setId(null);
+      setEmail(null);
+      setUsername(null);
+      setRole(null);
+      setProfileCompleted(true);
+      router.push("/auth/login");
+    }
+  }, [router, token]);
 
   const value = useMemo(() => ({ 
     token, 
