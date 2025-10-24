@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [particles, setParticles] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
   const router = useRouter();
   const { toast } = useToast();
@@ -82,18 +83,25 @@ export default function LoginPage() {
         <CardContent className="space-y-6 relative z-10">
           <form className="space-y-6" onSubmit={async (e) => {
             e.preventDefault();
-            const res = await AuthAPI.login({ email, password });
-            if (res.code === 1000 && res.result?.token) {
-              await login(res.result.token);
-              // After login, if profile incomplete and role is STUDENT/GUARDIAN, show prompt on home
-              router.push("/");
-            } else {
-              const message = res.message || "Đăng nhập thất bại";
-              if (message.includes("Email chưa được xác thực")) {
-                // redirect to OTP page later when created
-                router.push("/auth/verify-otp?email=" + encodeURIComponent(email));
+            setLoading(true);
+            try {
+              const res = await AuthAPI.login({ email, password });
+              if (res.code === 1000 && res.result?.token) {
+                await login(res.result.token);
+                // After login, if profile incomplete and role is STUDENT/GUARDIAN, show prompt on home
+                router.push("/");
+              } else {
+                const message = res.message || "Đăng nhập thất bại";
+                if (message.includes("Email chưa được xác thực")) {
+                  // redirect to OTP page later when created
+                  router.push("/auth/verify-otp?email=" + encodeURIComponent(email));
+                }
+                toast({ description: message, variant: "destructive" });
               }
-              toast({ description: message, variant: "destructive" });
+            } catch (error) {
+              toast({ description: "Có lỗi xảy ra khi đăng nhập", variant: "destructive" });
+            } finally {
+              setLoading(false);
             }
           }}>
             <div className="space-y-3">
