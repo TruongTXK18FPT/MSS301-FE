@@ -30,7 +30,7 @@ export default function LoginPage() {
         
         {/* Animated Particles */}
         <div className="absolute inset-0">
-          {[...Array(15)].map((_, i) => (
+          {Array.from({ length: 15 }, (_, i) => (
             <div
               key={`login-particle-${i}`}
               className="absolute w-1 h-1 bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full opacity-70 animate-float"
@@ -138,11 +138,16 @@ export default function LoginPage() {
             <div className="pt-4">
               <Button 
                 type="submit" 
-                className="w-full rounded-xl h-14 text-base font-semibold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-400 hover:to-cyan-400 text-white shadow-2xl shadow-purple-500/30 transition-all duration-300 hover:scale-105 hover:shadow-purple-500/40 relative overflow-hidden group"
+                disabled={loading}
+                className="w-full rounded-xl h-14 text-base font-semibold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-400 hover:to-cyan-400 text-white shadow-2xl shadow-purple-500/30 transition-all duration-300 hover:scale-105 hover:shadow-purple-500/40 relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  <Rocket className="size-5 group-hover:animate-bounce" />
-                  Đăng nhập
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <Rocket className="size-5 group-hover:animate-bounce" />
+                  )}
+                  {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </Button>
