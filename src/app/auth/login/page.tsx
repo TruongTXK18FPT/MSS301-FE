@@ -6,12 +6,42 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { authService } from '@/lib/services';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Check for success message from register
+  useEffect(() => {
+    const message = searchParams.get('message');
+    if (message) {
+      setSuccess(message);
+    }
+  }, [searchParams]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      await authService.login({ email, password });
+      router.push('/profile');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
@@ -23,7 +53,7 @@ export default function LoginPage() {
         
         {/* Animated Particles */}
         <div className="absolute inset-0">
-          {[...Array(15)].map((_, i) => (
+          {Array.from({ length: 15 }, (_, i) => (
             <div
               key={`login-particle-${i}`}
               className="absolute w-1 h-1 bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full opacity-70 animate-float"
@@ -61,7 +91,17 @@ export default function LoginPage() {
         </CardHeader>
         
         <CardContent className="space-y-6 relative z-10">
-          <form className="space-y-6">
+          {success && (
+            <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 text-green-200 text-sm">
+              {success}
+            </div>
+          )}
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-red-200 text-sm">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-3">
               <Label htmlFor="email" className="text-purple-200 font-medium flex items-center gap-2">
                 <Mail className="size-4" />
@@ -116,11 +156,16 @@ export default function LoginPage() {
             <div className="pt-4">
               <Button 
                 type="submit" 
-                className="w-full rounded-xl h-14 text-base font-semibold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-400 hover:to-cyan-400 text-white shadow-2xl shadow-purple-500/30 transition-all duration-300 hover:scale-105 hover:shadow-purple-500/40 relative overflow-hidden group"
+                disabled={loading}
+                className="w-full rounded-xl h-14 text-base font-semibold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-400 hover:to-cyan-400 text-white shadow-2xl shadow-purple-500/30 transition-all duration-300 hover:scale-105 hover:shadow-purple-500/40 relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  <Rocket className="size-5 group-hover:animate-bounce" />
-                  Đăng nhập
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <Rocket className="size-5 group-hover:animate-bounce" />
+                  )}
+                  {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </Button>
