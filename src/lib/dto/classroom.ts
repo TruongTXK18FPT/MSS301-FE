@@ -20,3 +20,10 @@ export interface Assignment {
   dueDate: string;
   createdAt: string;
 }
+
+// API Response Types
+export interface ApiResponse<T> {
+  code: number;
+  message: string;
+  result: T;
+}

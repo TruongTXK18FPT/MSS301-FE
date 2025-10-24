@@ -1,5 +1,5 @@
 import { classroomApi } from './axios';
-import { ClassroomResponse, Assignment, ApiResponse } from '../dto';
+import { ClassroomResponse, Assignment, ApiResponse } from '../dto/classroom';
 
 class ClassroomService {
   /**

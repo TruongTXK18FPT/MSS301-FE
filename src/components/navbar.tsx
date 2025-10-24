@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Menu, Home, Map, Brain, Target, GraduationCap, Bot, User, Rocket } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
+import { usePermissions } from '@/hooks/use-permissions';
 
 const navLinks = [
   { href: '/', label: 'Trang chủ', icon: Home, highlight: false },
@@ -64,6 +65,7 @@ const NavLink = ({ href, label, icon: Icon, highlight = false }: { href: string;
 
 const Navbar = () => {
   const { token, logout } = useAuth();
+  const { canCreateClassroom } = usePermissions();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-surface/80 backdrop-blur-lg">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -79,6 +81,16 @@ const Navbar = () => {
         <div className="hidden items-center gap-4 md:flex">
           {token ? (
             <>
+              {/* Role-based quick actions */}
+              {canCreateClassroom && (
+                <Link href="/classroom/create">
+                  <Button variant="outline" className="border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/20 transition-all duration-300">
+                    <GraduationCap className="size-4 mr-2" />
+                    Tạo lớp học
+                  </Button>
+                </Link>
+              )}
+              
               <Link href="/profile">
                 <Button variant="ghost" size="icon" className="text-ink-secondary hover:text-ink-white hover:bg-white/10 transition-all duration-300">
                   <User className="size-5" />

@@ -34,6 +34,7 @@ export interface IntrospectResponse {
   userId?: string;
   scope?: string;
   expiresAt?: number;
+  passwordSetupRequired?: boolean;
 }
 
 export interface RefreshTokenRequest {
