@@ -9,13 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/context/auth-context';
-import { AuthAPI } from '@/services/auth.service';
+import { AuthAPI } from '@/lib/services/auth.service';
 import { profileService } from '@/lib/services/profileService';
 import { addressService } from '@/lib/services/addressService';
 
 export default function ProfileCompletePage() {
   const router = useRouter();
-  const { email, username, loading: authLoading, checkProfileStatus } = useAuth();
+  const { email, username, loading: authLoading, checkProfileStatus, passwordSetupRequired } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -494,6 +494,39 @@ export default function ProfileCompletePage() {
                 />
         </div>
       </div>
+
+            {/* Password Setup Section - Only show if password setup is required */}
+            {passwordSetupRequired && (
+              <div className="space-y-4 border-t border-purple-500/30 pt-6">
+                <h3 className="text-lg font-semibold text-white">Bảo mật tài khoản</h3>
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-medium">Thiết lập mật khẩu (Tùy chọn)</h4>
+                      <p className="text-purple-200 text-sm mt-1">
+                        Để bảo mật tài khoản tốt hơn, bạn có thể thiết lập mật khẩu. 
+                        Điều này giúp bạn đăng nhập ngay cả khi Google OAuth gặp sự cố.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => router.push('/auth/setup-password')}
+                        className="mt-3 border-purple-500/30 text-purple-200 hover:bg-purple-500/20"
+                      >
+                        Thiết lập mật khẩu
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-4">
               <Button

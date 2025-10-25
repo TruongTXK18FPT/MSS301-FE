@@ -21,7 +21,7 @@ import {
   Trash2
 } from "lucide-react";
 import { usePermissions } from '@/hooks/use-permissions';
-import { classroomService } from '@/services/classroom.service';
+import { classroomService } from '@/lib/services/classroom.service';
 import { Classroom, Assignment, Quiz } from '@/types/classroom';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';

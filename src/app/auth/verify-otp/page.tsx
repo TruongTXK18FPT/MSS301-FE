@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { AuthAPI } from '@/services/auth.service';
+import { AuthAPI } from '@/lib/services/auth.service';
 import { Mail, Clock, RefreshCw, Shield, Sparkles } from 'lucide-react';
 import OTPInput from '@/components/ui/otp-input';
 

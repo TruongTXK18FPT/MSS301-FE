@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { AuthAPI } from "@/services/auth.service";
+import { AuthAPI } from "@/lib/services/auth.service";
 import { useRouter } from "next/navigation";
 
 type AuthState = {
@@ -57,15 +57,24 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
   const checkPasswordSetup = useCallback(async () => {
     try {
       console.log('[Auth] Checking password setup requirement...');
-      const res = await AuthAPI.introspect(token || '');
-      if (res.code === 1000 && res.result) {
-        setPasswordSetupRequired((res.result as any).passwordSetupRequired || false);
-      }
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      // Get user email from token
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const email = payload.email;
+      
+      if (!email) return;
+
+      const res = await AuthAPI.getPasswordSetupStatus(email);
+      const passwordSetupRequired = res.result || false;
+      console.log('[Auth] Password setup required:', passwordSetupRequired);
+      setPasswordSetupRequired(passwordSetupRequired);
     } catch (error) {
       console.error("[Auth] Failed to check password setup:", error);
       setPasswordSetupRequired(false);
     }
-  }, [token]);
+  }, []);
 
   const performIntrospect = useCallback(async (jwt: string) => {
     try {
@@ -161,7 +170,19 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     console.log('[Auth] Found token in localStorage, validating...');
     setToken(jwt);
     performIntrospect(jwt).finally(() => setLoading(false));
-  }, [performIntrospect]);
+    
+    // Listen for password setup completion
+    const handlePasswordSetupCompleted = () => {
+      console.log('[Auth] Password setup completed, refreshing status...');
+      checkPasswordSetup();
+    };
+
+    window.addEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
+    
+    return () => {
+      window.removeEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
+    };
+  }, [performIntrospect, checkPasswordSetup]);
 
   const login = useCallback(async (jwt: string) => {
     if (globalThis.window !== undefined) {

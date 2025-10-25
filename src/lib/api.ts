@@ -82,6 +82,27 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     throw new Error("Authentication failed. Please login again.");
   }
 
+  // Handle 400 Bad Request
+  if (res.status === 400) {
+    console.error(`[API] 400 Bad Request for ${path}`);
+    try {
+      const errorData = await res.json();
+      console.error(`[API] Error response:`, errorData);
+      console.error(`[API] Error message:`, errorData.message);
+      // Throw error with message from backend
+      throw new Error(errorData.message || "Bad Request");
+    } catch (parseError) {
+      // Only catch JSON parsing errors, not our thrown errors
+      if (parseError instanceof SyntaxError) {
+        console.error(`[API] JSON Parse error:`, parseError);
+        throw new Error("Bad Request");
+      } else {
+        // Re-throw our custom error
+        throw parseError;
+      }
+    }
+  }
+
   const data = (await res.json()) as ApiResponse<T>;
   return data;
 }

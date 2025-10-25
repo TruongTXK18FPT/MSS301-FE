@@ -12,10 +12,12 @@ export default function AuthRedirect() {
   useEffect(() => {
     if (loading || !email) return;
 
-    // Only redirect for password setup, not for profile completion
-    if (passwordSetupRequired && pathname !== '/auth/setup-password') {
-      router.push('/auth/setup-password');
-    }
+    // Remove automatic redirect for password setup - let user choose when to setup
+    // Password setup is now optional and can be done from profile completion or dashboard banner
+    // if (passwordSetupRequired && pathname !== '/auth/setup-password') {
+    //   router.push('/auth/setup-password');
+    // }
+    
     // Remove automatic redirect for profile completion - let banner handle it
     // else if (!profileCompleted && pathname !== '/profile/complete') {
     //   router.push('/profile/complete');

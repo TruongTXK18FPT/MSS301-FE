@@ -20,7 +20,8 @@ import {
   Share2,
   Heart
 } from "lucide-react";
-import { authService, profileService, mindmapService, classroomService } from '@/lib/services';
+import { authService } from '@/lib/services/auth.service';
+import { profileService, mindmapService, classroomService } from '@/lib/services';
 import { UserResponse, StudentProfileResponse, MindmapResponse, ClassroomResponse, Assignment } from '@/lib/dto';
 import { requireAuth } from '@/lib/auth';
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { GoogleAuthService } from '@/services/google-auth.service';
+import { GoogleAuthService } from '@/lib/services/google-auth.service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -30,7 +30,7 @@ export default function GoogleLoginPage() {
               localStorage.setItem('token', response.token);
               setStatus('success');
               toast({ description: 'Đăng nhập Google thành công!' });
-              router.push('/dashboard');
+              router.push('/');
             } else {
               // User needs to setup password
               const isPasswordRequired = await GoogleAuthService.isPasswordSetupRequired(response.email!);
@@ -39,7 +39,7 @@ export default function GoogleLoginPage() {
                 setStatus('password_required');
               } else {
                 setStatus('success');
-                router.push('/dashboard');
+                router.push('/');
               }
             }
           } else {
@@ -130,7 +130,7 @@ export default function GoogleLoginPage() {
           </CardHeader>
           <CardContent>
             <Button 
-              onClick={() => router.push('/auth/password-setup')} 
+              onClick={() => router.push('/auth/setup-password')} 
               className="w-full"
             >
               Thiết lập mật khẩu
@@ -153,10 +153,10 @@ export default function GoogleLoginPage() {
         </CardHeader>
         <CardContent>
           <Button 
-            onClick={() => router.push('/dashboard')} 
+            onClick={() => router.push('/')} 
             className="w-full"
           >
-            Đi đến Dashboard
+            Đi đến Trang chủ
           </Button>
         </CardContent>
       </Card>

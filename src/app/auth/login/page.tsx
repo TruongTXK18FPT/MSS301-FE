@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { AuthAPI } from "@/services/auth.service";
+import { AuthAPI } from "@/lib/services/auth.service";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
@@ -98,8 +98,26 @@ export default function LoginPage() {
                 }
                 toast({ description: message, variant: "destructive" });
               }
-            } catch (error) {
-              toast({ description: "Có lỗi xảy ra khi đăng nhập", variant: "destructive" });
+            } catch (error: any) {
+              console.error('Login error:', error);
+              console.error('Login error message:', error?.message);
+              console.error('Login error response:', error?.response);
+              let errorMessage = "Có lỗi xảy ra khi đăng nhập";
+              
+              // Priority: Use error message from backend first, then fallback to status codes
+              if (error?.message) {
+                // Use the message directly from backend (now properly localized)
+                console.log('Using error message from backend:', error.message);
+                errorMessage = error.message;
+              } else if (error?.response?.status === 400) {
+                errorMessage = "Email hoặc mật khẩu không đúng";
+              } else if (error?.response?.status === 401) {
+                errorMessage = "Email hoặc mật khẩu không đúng";
+              } else if (error?.response?.status === 404) {
+                errorMessage = "Tài khoản không tồn tại";
+              }
+              
+              toast({ description: errorMessage, variant: "destructive" });
             } finally {
               setLoading(false);
             }
@@ -125,15 +143,10 @@ export default function LoginPage() {
             </div>
             
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-purple-200 font-medium flex items-center gap-2">
-                  <Lock className="size-4" />
-                  Mật khẩu
-                </Label>
-                <Link href="#" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors hover:underline">
-                  Quên mật khẩu?
-                </Link>
-              </div>
+              <Label htmlFor="password" className="text-purple-200 font-medium flex items-center gap-2">
+                <Lock className="size-4" />
+                Mật khẩu
+              </Label>
               <div className="relative group">
                 <Input 
                   id="password" 
@@ -152,6 +165,13 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                 </button>
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 -z-10"></div>
+              </div>
+              
+              {/* Forgot Password Link */}
+              <div className="text-right">
+                <Link href="/auth/forgot-password" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors hover:underline">
+                  Quên mật khẩu?
+                </Link>
               </div>
             </div>
             

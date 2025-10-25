@@ -1,21 +1,33 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authService } from '@/lib/services/authService';
+import { authService } from '@/lib/services/auth.service';
 import { useAuth } from '@/context/auth-context';
 
 export default function SetupPasswordPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const { email } = useAuth();
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+
+  // Get email from URL params or auth context
+  useEffect(() => {
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setUserEmail(emailParam);
+    } else if (email) {
+      setUserEmail(email);
+    }
+  }, [searchParams, email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,11 +43,19 @@ export default function SetupPasswordPage() {
       return;
     }
 
+    console.log('Setup password form data:', {
+      email: userEmail,
+      passwordLength: password.length,
+      emailFromAuth: email,
+      emailFromParams: searchParams.get('email')
+    });
+
     setLoading(true);
 
     try {
-      await authService.setupPassword(password);
-      router.push('/profile');
+      await authService.setupPassword(password, userEmail);
+      // Redirect to home after successful password setup
+      router.push('/');
     } catch (error: any) {
       setError(error.message || 'Có lỗi xảy ra khi thiết lập mật khẩu');
     } finally {
@@ -52,6 +72,11 @@ export default function SetupPasswordPage() {
           </CardTitle>
           <CardDescription className="text-purple-200 text-center">
             Để bảo mật tài khoản, vui lòng thiết lập mật khẩu cho tài khoản của bạn
+            {userEmail && (
+              <div className="mt-2 text-sm text-purple-300">
+                Email: {userEmail}
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
