@@ -3,13 +3,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthAPI } from "@/lib/services/auth.service";
 import { useRouter } from "next/navigation";
+import { ROLE_ID_TO_STRING, ROLE_STRING_TO_ID, RoleId, UserRole } from "@/types/classroom";
 
 type AuthState = {
   token: string | null;
   id: string | null;
   email: string | null;
   username: string | null;
-  role: string | null;
+  role: UserRole | null;
+  roleId: RoleId | null;
   profileCompleted: boolean;
   passwordSetupRequired: boolean;
   loading: boolean;
@@ -27,7 +29,8 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
   const [id, setId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [roleId, setRoleId] = useState<RoleId | null>(null);
   const [profileCompleted, setProfileCompleted] = useState<boolean>(true);
   const [passwordSetupRequired, setPasswordSetupRequired] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -93,7 +96,21 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
         setId(res.result.id ?? null);
         setEmail(res.result.email ?? null);
         setUsername(res.result.email ?? null); // Use email as username for now
-        setRole(res.result.role ?? null);
+        
+        // Handle role - can be either string or number from backend
+        const roleValue = res.result.role;
+        if (typeof roleValue === 'number') {
+          // Backend returns role as ID
+          setRoleId(roleValue as RoleId);
+          setRole(ROLE_ID_TO_STRING[roleValue as RoleId] || null);
+        } else if (typeof roleValue === 'string') {
+          // Backend returns role as string
+          setRole(roleValue as UserRole);
+          setRoleId(ROLE_STRING_TO_ID[roleValue as UserRole] || null);
+        } else {
+          setRole(null);
+          setRoleId(null);
+        }
         
         // Check profile status and password setup after successful introspect
         await checkProfileStatus();
@@ -109,6 +126,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
         setEmail(null);
         setUsername(null);
         setRole(null);
+        setRoleId(null);
         setProfileCompleted(true);
       }
     } catch (error) {
@@ -177,10 +195,10 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       checkPasswordSetup();
     };
 
-    window.addEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
+    globalThis.addEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
     
     return () => {
-      window.removeEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
+      globalThis.removeEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
     };
   }, [performIntrospect, checkPasswordSetup]);
 
@@ -212,6 +230,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       setEmail(null);
       setUsername(null);
       setRole(null);
+      setRoleId(null);
       setProfileCompleted(true);
       router.push("/auth/login");
     }
@@ -223,6 +242,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     email, 
     username, 
     role, 
+    roleId,
     profileCompleted, 
     passwordSetupRequired,
     loading, 
@@ -230,7 +250,7 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     logout, 
     checkProfileStatus,
     checkPasswordSetup
-  }), [token, id, email, username, role, profileCompleted, passwordSetupRequired, loading, login, logout, checkProfileStatus, checkPasswordSetup]);
+  }), [token, id, email, username, role, roleId, profileCompleted, passwordSetupRequired, loading, login, logout, checkProfileStatus, checkPasswordSetup]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

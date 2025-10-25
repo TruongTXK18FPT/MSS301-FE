@@ -80,7 +80,33 @@ export interface CreateQuizRequest {
 }
 
 // User Roles
-export type UserRole = 'TEACHER' | 'STUDENT' | 'GUARDIAN';
+export type UserRole = 'ADMIN' | 'TEACHER' | 'STUDENT' | 'GUARDIAN';
+
+// Role IDs mapping
+export const ROLE_IDS = {
+  ADMIN: 1,
+  STUDENT: 2,
+  GUARDIAN: 3,
+  TEACHER: 4
+} as const;
+
+// Role ID to string mapping
+export const ROLE_ID_TO_STRING = {
+  1: 'ADMIN',
+  2: 'STUDENT', 
+  3: 'GUARDIAN',
+  4: 'TEACHER'
+} as const;
+
+// String to role ID mapping
+export const ROLE_STRING_TO_ID = {
+  'ADMIN': 1,
+  'STUDENT': 2,
+  'GUARDIAN': 3,
+  'TEACHER': 4
+} as const;
+
+export type RoleId = 1 | 2 | 3 | 4;
 
 // Permission Types
 export interface Permission {

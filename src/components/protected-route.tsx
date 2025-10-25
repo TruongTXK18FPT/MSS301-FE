@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { UserRole } from '@/types/classroom';
+import { getCurrentRole } from '@/lib/role-utils';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,22 +17,24 @@ export default function ProtectedRoute({
   allowedRoles = [], 
   fallback 
 }: ProtectedRouteProps) {
-  const { role, loading } = useAuth();
+  const { role, roleId, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading) {
-      if (!role) {
+      const currentRole = getCurrentRole(role, roleId);
+      
+      if (!currentRole) {
         router.push('/auth/login');
         return;
       }
       
-      if (allowedRoles.length > 0 && !allowedRoles.includes(role as UserRole)) {
+      if (allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
         router.push('/class');
         return;
       }
     }
-  }, [role, loading, router, allowedRoles]);
+  }, [role, roleId, loading, router, allowedRoles]);
 
   if (loading) {
     return (
@@ -41,7 +44,10 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!role) {
+  // Get current role - prefer roleId if available
+  const currentRole = getCurrentRole(role, roleId);
+
+  if (!currentRole) {
     return fallback || (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -52,7 +58,7 @@ export default function ProtectedRoute({
     );
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(role as UserRole)) {
+  if (allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
     return fallback || (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

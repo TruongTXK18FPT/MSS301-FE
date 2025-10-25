@@ -3,12 +3,13 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { UserRole, Permission } from '@/types/classroom';
+import { getCurrentRole } from '@/lib/role-utils';
 
 export function usePermissions(): Permission {
-  const { role } = useAuth();
+  const { role, roleId } = useAuth();
   
   return useMemo(() => {
-    const userRole = role as UserRole;
+    const userRole = getCurrentRole(role, roleId);
     
     switch (userRole) {
       case 'TEACHER':
@@ -47,6 +48,18 @@ export function usePermissions(): Permission {
           canTakeQuizzes: false,
         };
         
+      case 'ADMIN':
+        return {
+          canCreateClassroom: true,
+          canManageStudents: true,
+          canCreateAssignments: true,
+          canCreateQuizzes: true,
+          canViewAllClassrooms: true,
+          canJoinClassrooms: true,
+          canSubmitAssignments: true,
+          canTakeQuizzes: true,
+        };
+        
       default:
         return {
           canCreateClassroom: false,
@@ -59,5 +72,5 @@ export function usePermissions(): Permission {
           canTakeQuizzes: false,
         };
     }
-  }, [role]);
+  }, [role, roleId]);
 }

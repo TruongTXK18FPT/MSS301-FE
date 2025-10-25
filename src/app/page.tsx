@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import ClientOnlyWrapper from '@/components/client-only-wrapper';
 import { useState, useEffect } from 'react';
+import { isAdmin } from '@/lib/role-utils';
 
 const benefits = [
   {
@@ -60,7 +61,7 @@ const features = [
 ];
 
 export default function Home() {
-  const { profileCompleted, role } = useAuth();
+  const { profileCompleted, role, roleId } = useAuth();
   const [floatingStars, setFloatingStars] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
 
   useEffect(() => {
@@ -205,6 +206,41 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* Admin Demo Section */}
+        {isAdmin(role, roleId) && (
+          <section className="relative z-10 py-20">
+            <div className="container mx-auto px-4">
+              <div className="max-w-4xl mx-auto text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-200 text-sm font-medium mb-6">
+                  <Star className="size-4" />
+                  <span>Admin Dashboard</span>
+                </div>
+                <h2 className="font-headline text-4xl font-bold tracking-tight text-ink-white sm:text-5xl mb-6">
+                  Quản lý Hệ thống
+                </h2>
+                <p className="text-xl text-ink-secondary mb-12 leading-relaxed">
+                  Truy cập admin dashboard với đầy đủ tính năng quản lý users, lớp học, tenants và analytics
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                  <Link href="/admin">
+                    <Button size="lg" className="group rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 px-10 py-6 text-xl font-bold text-white shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_rgba(168,85,247,0.6)]">
+                      <Star className="mr-3 size-6 group-hover:rotate-12 transition-transform" />
+                      Admin Dashboard
+                      <ArrowRight className="ml-3 size-6 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </Link>
+                  <Link href="/admin-demo">
+                    <Button size="lg" variant="ghost" className="group rounded-2xl px-10 py-6 text-xl font-bold text-ink-secondary transition-all duration-300 hover:text-white hover:bg-white/10">
+                      <Zap className="mr-3 size-6 group-hover:scale-110 transition-transform" />
+                      Demo Preview
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* CTA Section */}
         <section className="relative z-10 py-20">

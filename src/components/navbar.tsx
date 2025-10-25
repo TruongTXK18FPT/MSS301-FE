@@ -9,6 +9,9 @@ import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Menu, Home, Map, Brain, Target, GraduationCap, Bot, User, Rocket } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
+import { isAdmin } from '@/lib/role-utils';
+import AdminBadge from '@/components/admin-badge';
+import AdminQuickAccess from '@/components/admin-quick-access';
 
 const navLinks = [
   { href: '/', label: 'Trang chủ', icon: Home, highlight: false },
@@ -64,7 +67,7 @@ const NavLink = ({ href, label, icon: Icon, highlight = false }: { href: string;
 };
 
 const Navbar = () => {
-  const { token, logout } = useAuth();
+  const { token, logout, role, roleId } = useAuth();
   const { canCreateClassroom } = usePermissions();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-surface/80 backdrop-blur-lg">
@@ -81,6 +84,14 @@ const Navbar = () => {
         <div className="hidden items-center gap-4 md:flex">
           {token ? (
             <>
+              {/* Admin Quick Access */}
+              {isAdmin(role, roleId) && (
+                <div className="flex items-center gap-2">
+                  <AdminBadge variant="compact" />
+                  <AdminQuickAccess variant="button" />
+                </div>
+              )}
+              
               {/* Role-based quick actions */}
               {canCreateClassroom && (
                 <Link href="/classroom/create">
@@ -170,6 +181,14 @@ const Navbar = () => {
                         <div className="mt-auto p-4 border-t border-white/10 space-y-4">
                           {token ? (
                             <>
+                              {/* Admin Quick Access for Mobile */}
+                              {isAdmin(role, roleId) && (
+                                <div className="space-y-2">
+                                  <AdminBadge variant="mobile" className="w-full justify-center" />
+                                  <AdminQuickAccess variant="mobile" />
+                                </div>
+                              )}
+                              
                               <Link href="/profile" className="block w-full text-center rounded-md px-3 py-2 text-base font-medium text-ink-secondary hover:bg-white/5 hover:text-ink-white">
                                 <User className="inline-block size-5 mr-2" />
                                 Hồ sơ
