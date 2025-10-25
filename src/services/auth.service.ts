@@ -67,10 +67,15 @@ export const AuthAPI = {
     });
   },
   logout: async (token: string) => {
-    return apiFetch<unknown>(`/authenticate/auth/logout`, {
+    // For logout, we don't need Authorization header since token is in body
+    const res = await fetch(`${API_BASE_URL}/authenticate/auth/logout`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ token }),
     });
+    return (await res.json()) as ApiResponse<unknown>;
   },
   getMe: async () => {
     return apiFetch<unknown>(`/authenticate/users/me`, {

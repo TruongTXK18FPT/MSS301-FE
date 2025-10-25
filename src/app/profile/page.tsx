@@ -439,6 +439,14 @@ export default function ProfilePage() {
                     <span className="text-white">{profile?.phoneNumber || 'Chưa cập nhật'}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-green-200">Lớp:</span>
+                    <span className="text-white">{profile?.grade || 'Chưa cập nhật'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-200">Trường học:</span>
+                    <span className="text-white">{profile?.school || 'Chưa cập nhật'}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-green-200">Ngày sinh:</span>
                     <span className="text-white">{profile?.dob ? new Date(profile.dob).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}</span>
                   </div>

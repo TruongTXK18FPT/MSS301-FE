@@ -15,7 +15,7 @@ import { addressService } from '@/lib/services/addressService';
 
 export default function ProfileCompletePage() {
   const router = useRouter();
-  const { email, username, loading: authLoading } = useAuth();
+  const { email, username, loading: authLoading, checkProfileStatus } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -228,10 +228,29 @@ export default function ProfileCompletePage() {
     setLoading(true);
 
     try {
-      await profileService.updateCurrentProfile(formData);
+      // Map form data to API format
+      const apiData = {
+        fullName: formData.fullName,
+        dob: formData.birthDate, // Map birthDate to dob
+        phoneNumber: formData.phoneNumber,
+        address: `${formData.address}, ${formData.ward}, ${formData.province}`, // Create full address
+        bio: formData.bio,
+        grade: formData.grade,
+        school: formData.school
+      };
+      
+      await profileService.updateCurrentProfile(apiData);
+      
+      // Refresh profile completion status after successful update
+      await checkProfileStatus();
+      
+      // Show success message
+      alert('Profile đã được cập nhật thành công!');
+      
       router.push('/profile');
     } catch (error) {
       console.error('Error completing profile:', error);
+      alert('Có lỗi xảy ra khi cập nhật profile. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -326,20 +345,6 @@ export default function ProfileCompletePage() {
       </div>
 
               <div className="space-y-2">
-                <Label htmlFor="birthDate" className="text-purple-200">Ngày sinh</Label>
-                <Input
-                  id="birthDate"
-                  type="date"
-                  value={formData.birthDate}
-                  onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                  className="bg-black/30 border-purple-500/30 text-white"
-                />
-                {errors.birthDate && (
-                  <p className="text-red-400 text-sm">{errors.birthDate}</p>
-                )}
-      </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="school" className="text-purple-200">Trường học</Label>
                 <Input
                   id="school"
@@ -371,6 +376,20 @@ export default function ProfileCompletePage() {
                     <SelectItem value="12">Lớp 12</SelectItem>
                   </SelectContent>
                 </Select>
+      </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="birthDate" className="text-purple-200">Ngày sinh</Label>
+                <Input
+                  id="birthDate"
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={(e) => handleInputChange('birthDate', e.target.value)}
+                  className="bg-black/30 border-purple-500/30 text-white"
+                />
+                {errors.birthDate && (
+                  <p className="text-red-400 text-sm">{errors.birthDate}</p>
+                )}
       </div>
 
       </div>
