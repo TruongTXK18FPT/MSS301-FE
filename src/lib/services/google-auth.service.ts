@@ -85,3 +85,4 @@ export class GoogleAuthService {
 
   // Profile completion methods will be handled by profile-service
 }
+
