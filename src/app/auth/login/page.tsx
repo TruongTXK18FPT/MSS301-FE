@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, Sparkles, Rocket } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AuthAPI } from "@/lib/services/auth.service";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 
@@ -18,7 +18,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [particles, setParticles] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
+  const errorToastShownRef = useRef(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { login } = useAuth();
 
@@ -32,6 +34,30 @@ export default function LoginPage() {
     }));
     setParticles(generatedParticles);
   }, []);
+
+  // Separate useEffect for error handling to prevent duplicate toasts
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const message = searchParams.get('message');
+
+    // Only show toast once and only if there's an error
+    if (error && !errorToastShownRef.current) {
+      errorToastShownRef.current = true;
+      
+      // Use message from backend (already in Vietnamese)
+      const errorMessage = message ? decodeURIComponent(message) : 'Đăng nhập Google thất bại';
+      toast({ 
+        description: errorMessage, 
+        variant: 'destructive' 
+      });
+
+      // Clean up URL parameters after showing toast
+      const url = new URL(window.location.href);
+      url.searchParams.delete('error');
+      url.searchParams.delete('message');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams, toast]);
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">

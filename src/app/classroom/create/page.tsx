@@ -19,7 +19,7 @@ import {
   Globe
 } from "lucide-react";
 import { classroomService } from '@/lib/services/classroom.service';
-import { CreateClassroomRequest } from '@/types/classroom';
+import { CreateClassroomRequest } from '@/lib/dto/classroom';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 

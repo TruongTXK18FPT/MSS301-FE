@@ -11,7 +11,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RegisterRequest } from "@/types/auth";
+import { RegisterRequest } from "@/lib/dto/auth";
 import ClassSelect from "@/components/ui/class-select";
 import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Sparkles } from "lucide-react";
 import Link from "next/link";

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RegisterRequest } from "@/types/auth";
+import { RegisterRequest } from "@/lib/dto/auth";
 import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Sparkles, BookOpen, Award, Phone, Briefcase } from "lucide-react";
 import Link from "next/link";
 

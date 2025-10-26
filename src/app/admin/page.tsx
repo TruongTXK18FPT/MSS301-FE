@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import ProtectedRoute from '@/components/protected-route';
-import { UserRole, ROLE_IDS } from '@/types/classroom';
+import { UserRole, ROLE_IDS } from '@/lib/dto/classroom';
 import AdminSidebar from '@/components/admin/admin-sidebar';
 import AdminHeader from '@/components/admin/admin-header';
 import AnalyticsDashboard from '@/components/admin/analytics-dashboard';

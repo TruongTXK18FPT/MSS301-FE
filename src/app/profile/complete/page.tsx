@@ -15,7 +15,7 @@ import { addressService } from '@/lib/services/addressService';
 
 export default function ProfileCompletePage() {
   const router = useRouter();
-  const { email, username, loading: authLoading, checkProfileStatus, passwordSetupRequired } = useAuth();
+  const { email, username, loading: authLoading, checkProfileStatus, passwordSetupRequired, checkPasswordSetupRequired } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -39,6 +39,14 @@ export default function ProfileCompletePage() {
   const [filteredWards, setFilteredWards] = useState<any[]>([]);
   const [showProvinceDropdown, setShowProvinceDropdown] = useState(false);
   const [showWardDropdown, setShowWardDropdown] = useState(false);
+
+  // Re-check password setup status when component mounts
+  useEffect(() => {
+    if (email && !authLoading) {
+      console.log('[ProfileComplete] Re-checking password setup status for:', email);
+      checkPasswordSetupRequired();
+    }
+  }, [email, authLoading, checkPasswordSetupRequired]);
 
   // Filter provinces based on search
   useEffect(() => {
@@ -198,26 +206,57 @@ export default function ProfileCompletePage() {
     }
   };
 
-  // Validate birth date based on grade
+  // Validate birth date format and grade compatibility
   const validateBirthDate = (birthDate: string, grade: string) => {
-    if (!birthDate || !grade) return '';
+    if (!birthDate) return '';
 
-    const birthYear = new Date(birthDate).getFullYear();
-    const currentYear = new Date().getFullYear();
-    const gradeNum = parseInt(grade);
-
-    // Calculate expected birth year based on grade
-    // Assuming students start grade 1 at age 6
-    const expectedBirthYear = currentYear - (6 + gradeNum - 1);
-    const minBirthYear = expectedBirthYear - 1; // Allow 1 year variation
-    const maxBirthYear = expectedBirthYear + 1;
-
-    if (birthYear < minBirthYear || birthYear > maxBirthYear) {
-      return `Năm sinh không phù hợp với lớp ${grade}. Năm sinh dự kiến: ${expectedBirthYear}`;
+    // Validate date format (dd/MM/yyyy)
+    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const match = birthDate.match(dateRegex);
+    
+    if (!match) {
+      return 'Định dạng ngày sinh không đúng. Vui lòng nhập theo định dạng ../../....';
     }
 
-    if (birthYear > currentYear) {
+    const [, day, month, year] = match;
+    const dayNum = parseInt(day);
+    const monthNum = parseInt(month);
+    const yearNum = parseInt(year);
+
+    // Validate date values
+    if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+      return 'Ngày sinh không hợp lệ';
+    }
+
+    // Create Date object for validation
+    const dateObj = new Date(yearNum, monthNum - 1, dayNum);
+    if (dateObj.getDate() !== dayNum || dateObj.getMonth() !== monthNum - 1 || dateObj.getFullYear() !== yearNum) {
+      return 'Ngày sinh không tồn tại';
+    }
+
+    const currentYear = new Date().getFullYear();
+
+    // Check if year is not in the future
+    if (yearNum > currentYear) {
       return 'Năm sinh không thể là tương lai';
+    }
+
+    // Validate grade compatibility (only if grade is provided)
+    if (grade) {
+      const gradeNum = parseInt(grade);
+      if (!isNaN(gradeNum)) {
+        // Calculate expected birth year based on grade
+        // Assuming students start grade 1 at age 6
+        const expectedBirthYear = currentYear - (6 + gradeNum - 1);
+        
+        // Allow 2 years variation for students who might repeat grades
+        const minBirthYear = expectedBirthYear - 2; // Allow 2 years older
+        const maxBirthYear = expectedBirthYear + 1; // Allow 1 year younger
+        
+        if (yearNum < minBirthYear || yearNum > maxBirthYear) {
+          return `Năm sinh không phù hợp với lớp ${grade}. Năm sinh dự kiến: ${expectedBirthYear} (±2 năm)`;
+        }
+      }
     }
 
     return '';
@@ -228,10 +267,17 @@ export default function ProfileCompletePage() {
     setLoading(true);
 
     try {
+      // Convert date format from dd/MM/yyyy to yyyy-MM-dd
+      const convertDateFormat = (dateStr: string) => {
+        if (!dateStr) return null;
+        const [day, month, year] = dateStr.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      };
+
       // Map form data to API format
       const apiData = {
         fullName: formData.fullName,
-        dob: formData.birthDate, // Map birthDate to dob
+        birthDate: convertDateFormat(formData.birthDate), // Convert date format
         phoneNumber: formData.phoneNumber,
         address: `${formData.address}, ${formData.ward}, ${formData.province}`, // Create full address
         bio: formData.bio,
@@ -272,6 +318,28 @@ export default function ProfileCompletePage() {
   }
 
   const handleInputChange = (field: string, value: string) => {
+    // Auto-format birth date input
+    if (field === 'birthDate') {
+      // Remove all non-digits
+      const digitsOnly = value.replace(/\D/g, '');
+      
+      // Format as dd/MM/yyyy
+      let formatted = digitsOnly;
+      if (digitsOnly.length >= 3) {
+        formatted = digitsOnly.slice(0, 2) + '/' + digitsOnly.slice(2);
+      }
+      if (digitsOnly.length >= 5) {
+        formatted = digitsOnly.slice(0, 2) + '/' + digitsOnly.slice(2, 4) + '/' + digitsOnly.slice(4, 8);
+      }
+      
+      // Limit to 10 characters (dd/MM/yyyy)
+      if (formatted.length > 10) {
+        formatted = formatted.slice(0, 10);
+      }
+      
+      value = formatted;
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear errors when user starts typing
@@ -295,10 +363,13 @@ export default function ProfileCompletePage() {
       const birthDate = field === 'birthDate' ? value : formData.birthDate;
       const grade = field === 'grade' ? value : formData.grade;
       
-      if (birthDate && grade) {
+      if (birthDate) {
         const error = validateBirthDate(birthDate, grade);
         if (error) {
           setErrors(prev => ({ ...prev, birthDate: error }));
+        } else {
+          // Clear error if validation passes
+          setErrors(prev => ({ ...prev, birthDate: '' }));
         }
       }
     }
@@ -379,10 +450,11 @@ export default function ProfileCompletePage() {
       </div>
 
               <div className="space-y-2">
-                <Label htmlFor="birthDate" className="text-purple-200">Ngày sinh</Label>
+                <Label htmlFor="birthDate" className="text-purple-200">Ngày sinh (../../....)</Label>
                 <Input
                   id="birthDate"
-                  type="date"
+                  type="text"
+                  placeholder="23/04/2017"
                   value={formData.birthDate}
                   onChange={(e) => handleInputChange('birthDate', e.target.value)}
                   className="bg-black/30 border-purple-500/30 text-white"
@@ -481,7 +553,7 @@ export default function ProfileCompletePage() {
                   )}
       </div>
       </div>
-        </div>
+      </div>
 
               <div className="space-y-2">
                 <Label htmlFor="address" className="text-purple-200">Địa chỉ chi tiết</Label>
@@ -523,9 +595,9 @@ export default function ProfileCompletePage() {
                         Thiết lập mật khẩu
                       </Button>
                     </div>
-                  </div>
-                </div>
-              </div>
+        </div>
+        </div>
+      </div>
             )}
 
             <div className="flex justify-end space-x-4">

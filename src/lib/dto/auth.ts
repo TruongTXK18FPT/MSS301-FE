@@ -1,4 +1,5 @@
-// Auth DTOs
+// Auth DTOs - Consolidated from types/auth.ts and dto/auth.ts
+
 export interface UserResponse {
   id: string;
   email: string;
@@ -13,13 +14,17 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
-  user: UserResponse;
+  refreshToken: string;
+  expiresIn: number;
+  authenticated: boolean;
 }
 
 export interface RegisterRequest {
+  fullName: string;
   email: string;
   password: string;
-  fullName: string;
+  confirmPassword: string;
+  userType: "STUDENT" | "TEACHER" | "GUARDIAN";
 }
 
 export interface VerifyEmailRequest {
@@ -27,26 +32,75 @@ export interface VerifyEmailRequest {
   otp: string;
 }
 
-export interface ProfileCompletionRequest {
-  fullName: string;
-  phoneNumber?: string;
-  birthDate?: string;
-  school?: string;
-  grade?: string;
-  learningGoals?: string;
-  subjectsOfInterest?: string;
+export interface IntrospectResponse {
+  valid: boolean;
+  email: string;
+  id: string;
+  role?: string;
+  userId?: string;
+  scope?: string;
+  expiresAt?: number;
+  passwordSetupRequired?: boolean;
 }
 
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface LogoutRequest {
+  token: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+// Profile Completion Types
 export interface ProfileStatusResponse {
   profileCompleted: boolean;
   userType: string;
   email: string;
 }
 
-export interface IntrospectResponse {
-  valid: boolean;
-  id?: string;
-  email?: string;
-  role?: string;
-  passwordSetupRequired?: boolean;
+export interface StudentProfileData {
+  phone: string;
+  birthDate: string; // yyyy-MM-dd
+  school?: string;
+  grade?: string;
+  learningGoals?: string;
+  subjectsOfInterest?: string;
+}
+
+export interface TeacherProfileData {
+  phone: string;
+  birthDate: string; // yyyy-MM-dd
+  department?: string;
+  specialization?: string;
+  yearsOfExperience?: number;
+  qualifications?: string;
+  bio?: string;
+}
+
+export interface GuardianProfileData {
+  phone: string;
+  birthDate: string; // yyyy-MM-dd
+  relationship?: string;
+  studentEmail?: string;
+  studentPhone?: string;
+}
+
+export interface ProfileCompletionRequest {
+  userType: "STUDENT" | "TEACHER" | "GUARDIAN";
+  data: StudentProfileData | TeacherProfileData | GuardianProfileData;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }

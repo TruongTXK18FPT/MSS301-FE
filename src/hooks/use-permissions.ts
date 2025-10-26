@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { UserRole, Permission } from '@/types/classroom';
+import { UserRole, Permission } from '@/lib/dto/classroom';
 import { getCurrentRole } from '@/lib/role-utils';
 
 export function usePermissions(): Permission {

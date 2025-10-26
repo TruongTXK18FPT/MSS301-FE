@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GoogleAuthService } from '@/lib/services/google-auth.service';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,28 @@ export default function GoogleLoginPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'password_required'>('loading');
+  const errorToastShownRef = useRef(false);
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
       const code = searchParams.get('code');
       const state = searchParams.get('state');
+      const error = searchParams.get('error');
+      const message = searchParams.get('message');
+
+      // Check for error parameters first
+      if (error && !errorToastShownRef.current) {
+        errorToastShownRef.current = true;
+        setStatus('error');
+        
+        // Use message from backend (already in Vietnamese)
+        const errorMessage = message ? decodeURIComponent(message) : 'Đăng nhập Google thất bại';
+        toast({ 
+          description: errorMessage, 
+          variant: 'destructive' 
+        });
+        return;
+      }
 
       if (code && state) {
         try {
@@ -95,23 +112,48 @@ export default function GoogleLoginPage() {
   }
 
   if (status === 'error') {
+    const isRoleRestricted = searchParams.get('error') === 'google_role_restricted';
+    
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center text-red-600">Đăng nhập thất bại</CardTitle>
+            <CardTitle className="text-center text-red-600">
+              {isRoleRestricted ? 'Không thể đăng nhập Google' : 'Đăng nhập thất bại'}
+            </CardTitle>
             <CardDescription className="text-center">
-              Có lỗi xảy ra trong quá trình đăng nhập Google
+              {isRoleRestricted 
+                ? 'Tài khoản này đã đăng ký với vai trò phụ huynh/giáo viên. Vui lòng sử dụng đăng nhập thường.'
+                : 'Có lỗi xảy ra trong quá trình đăng nhập Google'
+              }
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={handleRedirectToGoogle} 
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? 'Đang chuyển hướng...' : 'Thử lại với Google'}
-            </Button>
+          <CardContent className="space-y-4">
+            {isRoleRestricted ? (
+              <div className="text-center">
+                <Button 
+                  onClick={() => router.push('/auth/login')} 
+                  className="w-full"
+                >
+                  Đăng nhập thường
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => router.push('/auth/register')} 
+                  className="w-full mt-2"
+                >
+                  Đăng ký tài khoản mới
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                onClick={handleRedirectToGoogle} 
+                className="w-full"
+                disabled={loading}
+              >
+                {loading ? 'Đang chuyển hướng...' : 'Thử lại với Google'}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

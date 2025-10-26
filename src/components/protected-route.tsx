@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { UserRole } from '@/types/classroom';
+import { UserRole } from '@/lib/dto/classroom';
 import { getCurrentRole } from '@/lib/role-utils';
 
 interface ProtectedRouteProps {

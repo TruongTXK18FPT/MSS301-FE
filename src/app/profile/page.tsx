@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +19,19 @@ import {
   Plus,
   Eye,
   Share2,
-  Heart
+  Heart,
+  Lock
 } from "lucide-react";
 import { authService } from '@/lib/services/auth.service';
 import { profileService, mindmapService, classroomService } from '@/lib/services';
 import { UserResponse, StudentProfileResponse, MindmapResponse, ClassroomResponse, Assignment } from '@/lib/dto';
 import { requireAuth } from '@/lib/auth';
+import { useAuth } from '@/context/auth-context';
+import { Shield } from "lucide-react";
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { role } = useAuth();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [profile, setProfile] = useState<StudentProfileResponse | null>(null);
   const [mindmaps, setMindmaps] = useState<MindmapResponse[]>([]);
@@ -39,8 +45,15 @@ export default function ProfilePage() {
     if (!requireAuth()) {
       return;
     }
+    
+    // Redirect guardian users to guardian profile page
+    if (role === 'GUARDIAN') {
+      router.push('/profile/guardian');
+      return;
+    }
+    
     loadUserData();
-  }, []);
+  }, [role, router]);
 
   const loadUserData = async () => {
     try {
@@ -454,6 +467,28 @@ export default function ProfilePage() {
                   <div className="flex justify-between">
                     <span className="text-green-200">Địa chỉ:</span>
                     <span className="text-white">{profile?.address || 'Chưa cập nhật'}</span>
+                  </div>
+                  
+                      {/* Guardian Verification Button */}
+                      <div className="pt-4 border-t border-green-500/20">
+                        <Button 
+                          onClick={() => router.push('/profile/verify-guardian')}
+                          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white"
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Xác nhận Guardian
+                        </Button>
+                      </div>
+                  
+                  {/* Change Password Button */}
+                  <div className="pt-4 border-t border-green-500/20">
+                    <Button 
+                      onClick={() => router.push('/profile/change-password')}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white"
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      Thay đổi mật khẩu
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

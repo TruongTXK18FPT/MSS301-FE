@@ -9,7 +9,7 @@ import {
   CreateAssignmentRequest,
   CreateQuizRequest,
   ApiResponse 
-} from '@/types/classroom';
+} from '@/lib/dto/classroom';
 
 class ClassroomService {
   // Classroom Management

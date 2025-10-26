@@ -4,6 +4,11 @@ import {
   StudentProfileResponse, 
   ProfileCompletionStatusResponse
 } from '../dto';
+import { 
+  GuardianProfileResponse, 
+  GuardianProfileWithStudents, 
+  StudentGuardianResponse 
+} from '../dto/guardian';
 
 // Define ApiResponse locally
 interface ApiResponse<T> {
@@ -181,6 +186,96 @@ class ProfileService {
       await profileApi.delete('/profile/avatar');
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Xóa avatar thất bại');
+    }
+  }
+
+  // Guardian Profile Methods
+  /**
+   * Lấy thông tin guardian profile hiện tại
+   */
+  async getGuardianProfile(): Promise<GuardianProfileResponse> {
+    try {
+      const response = await profileApi.get<ApiResponse<GuardianProfileResponse>>('/guardian/me');
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy thông tin guardian profile');
+    }
+  }
+
+  /**
+   * Lấy guardian profile với danh sách học sinh
+   */
+  async getGuardianProfileWithStudents(): Promise<GuardianProfileWithStudents> {
+    try {
+      const response = await profileApi.get<ApiResponse<GuardianProfileWithStudents>>('/guardian/me/students');
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy thông tin guardian với học sinh');
+    }
+  }
+
+  /**
+   * Lấy danh sách học sinh của guardian theo ID
+   */
+  async getStudentsByGuardian(guardianId: string): Promise<StudentGuardianResponse[]> {
+    try {
+      const response = await profileApi.get<ApiResponse<StudentGuardianResponse[]>>(`/guardian/${guardianId}/students`);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy danh sách học sinh');
+    }
+  }
+
+  /**
+   * Kiểm tra mối quan hệ giữa guardian và student
+   */
+  async checkGuardianStudentRelationship(guardianEmail: string, studentEmail: string): Promise<boolean> {
+    try {
+      const response = await profileApi.get<ApiResponse<boolean>>(
+        `/guardian/check-relationship?guardianEmail=${encodeURIComponent(guardianEmail)}&studentEmail=${encodeURIComponent(studentEmail)}`
+      );
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể kiểm tra mối quan hệ');
+    }
+  }
+
+  /**
+   * Guardian thêm student vào danh sách quản lý
+   */
+  async addStudentToGuardian(studentEmail: string, relationship: string): Promise<void> {
+    try {
+      await profileApi.post<ApiResponse<void>>(
+        `/guardian/add-student?studentEmail=${encodeURIComponent(studentEmail)}&relationship=${encodeURIComponent(relationship)}`
+      );
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể thêm học sinh');
+    }
+  }
+
+  /**
+   * Student xác nhận quan hệ với Guardian bằng mã OTP
+   */
+  async verifyStudentRelationship(studentEmail: string, verificationCode: string): Promise<void> {
+    try {
+      await profileApi.post<ApiResponse<void>>(
+        `/guardian/verify-student?studentEmail=${encodeURIComponent(studentEmail)}&verificationCode=${encodeURIComponent(verificationCode)}`
+      );
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể xác nhận quan hệ');
+    }
+  }
+
+  /**
+   * Gửi lại mã xác nhận Guardian
+   */
+  async resendGuardianVerification(studentEmail: string): Promise<void> {
+    try {
+      await profileApi.post<ApiResponse<void>>(
+        `/guardian/resend-verification?studentEmail=${encodeURIComponent(studentEmail)}`
+      );
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể gửi lại mã xác nhận');
     }
   }
 }

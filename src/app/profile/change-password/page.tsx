@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,34 @@ export default function ChangePasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [checkingPasswordSetup, setCheckingPasswordSetup] = useState(true);
+
+  // Check if user needs to setup password first
+  useEffect(() => {
+    const checkPasswordSetup = async () => {
+      if (!email) {
+        setCheckingPasswordSetup(false);
+        return;
+      }
+
+      try {
+        const response = await AuthAPI.getPasswordSetupStatus(email);
+        if (response.code === 1000 && response.result === true) {
+          // User needs to setup password first
+          setError('Bạn chưa thiết lập mật khẩu. Vui lòng thiết lập mật khẩu trước khi thay đổi.');
+          setTimeout(() => {
+            router.push('/auth/setup-password');
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Failed to check password setup status:', error);
+      } finally {
+        setCheckingPasswordSetup(false);
+      }
+    };
+
+    checkPasswordSetup();
+  }, [email, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,18 +76,41 @@ export default function ChangePasswordPage() {
     try {
       await AuthAPI.changePassword({
         currentPassword,
-        newPassword,
-        confirmPassword
+        newPassword
       });
       
       // Redirect to profile after successful password change
       router.push('/profile');
     } catch (error: any) {
-      setError(error.message || 'Có lỗi xảy ra khi thay đổi mật khẩu');
+      const errorMessage = error.message || 'Có lỗi xảy ra khi thay đổi mật khẩu';
+      
+      // Check if user needs to setup password first
+      if (errorMessage.includes('No password set') || errorMessage.includes('setup your password first')) {
+        setError('Bạn chưa thiết lập mật khẩu. Vui lòng thiết lập mật khẩu trước khi thay đổi.');
+        // Optionally redirect to setup password page after a delay
+        setTimeout(() => {
+          router.push('/auth/setup-password');
+        }, 3000);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading while checking password setup status
+  if (checkingPasswordSetup) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900/20 via-blue-900/10 to-indigo-900/20 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-black/30 backdrop-blur-xl border-purple-500/30">
+          <CardContent className="p-6 text-center">
+            <div className="text-white">Đang kiểm tra trạng thái mật khẩu...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900/20 via-blue-900/10 to-indigo-900/20 flex items-center justify-center p-4">

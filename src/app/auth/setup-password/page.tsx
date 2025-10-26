@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authService } from '@/lib/services/auth.service';
+import { AuthAPI } from '@/lib/services/auth.service';
 import { useAuth } from '@/context/auth-context';
 
 export default function SetupPasswordPage() {
@@ -53,7 +53,7 @@ export default function SetupPasswordPage() {
     setLoading(true);
 
     try {
-      await authService.setupPassword(password, userEmail);
+      await AuthAPI.setupPasswordForGoogleUser(userEmail, password);
       // Redirect to home after successful password setup
       router.push('/');
     } catch (error: any) {

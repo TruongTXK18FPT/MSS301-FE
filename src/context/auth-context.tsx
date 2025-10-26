@@ -3,173 +3,163 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthAPI } from "@/lib/services/auth.service";
 import { useRouter } from "next/navigation";
-import { ROLE_ID_TO_STRING, ROLE_STRING_TO_ID, RoleId, UserRole } from "@/types/classroom";
 
 type AuthState = {
   token: string | null;
   id: string | null;
   email: string | null;
   username: string | null;
-  role: UserRole | null;
-  roleId: RoleId | null;
+  role: string | null;
   profileCompleted: boolean;
   passwordSetupRequired: boolean;
   loading: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
   checkProfileStatus: () => Promise<void>;
-  checkPasswordSetup: () => Promise<void>;
+  checkPasswordSetupRequired: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-export function AuthProvider({ children }: { readonly children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [id, setId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [roleId, setRoleId] = useState<RoleId | null>(null);
-  const [profileCompleted, setProfileCompleted] = useState<boolean>(true);
+  const [role, setRole] = useState<string | null>(null);
+  const [profileCompleted, setProfileCompleted] = useState<boolean>(false);
   const [passwordSetupRequired, setPasswordSetupRequired] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   const checkProfileStatus = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (loading) return;
+    
     try {
       console.log('[Auth] Checking profile status...');
       const res = await AuthAPI.getProfileStatus();
+      console.log('[Auth] Profile status API response:', res);
+      
       if (res.code === 1000 && res.result) {
-        console.log('[Auth] Profile status:', res.result.profileCompleted);
-        setProfileCompleted(res.result.profileCompleted);
+        console.log('[Auth] Profile status:', res.result.profileCompleted, 'User type:', res.result.userType);
+        
+        // Only STUDENT role needs profile completion
+        // GUARDIAN and TEACHER are always considered completed
+        if (res.result.userType === 'STUDENT') {
+          console.log('[Auth] Setting profileCompleted to:', res.result.profileCompleted);
+          setProfileCompleted(res.result.profileCompleted);
+          // Set role from profile service if not set from introspect
+          if (!role) {
+            console.log('[Auth] Setting role from profile service:', res.result.userType);
+            setRole(res.result.userType);
+          }
+        } else {
+          console.log('[Auth] Non-student role, setting profileCompleted to true');
+          setProfileCompleted(true); // GUARDIAN/TEACHER don't need profile completion
+          // Set role from profile service if not set from introspect
+          if (!role) {
+            console.log('[Auth] Setting role from profile service:', res.result.userType);
+            setRole(res.result.userType);
+          }
+        }
+        
+        // Force re-render by logging current state
+        console.log('[Auth] Current auth state after profile check:', { 
+          profileCompleted: res.result.userType === 'STUDENT' ? res.result.profileCompleted : true,
+          userType: res.result.userType,
+          role: res.result.userType // Use role from profile service
+        });
       } else {
         console.log('[Auth] Profile status check failed:', res.message);
         setProfileCompleted(false); // Default to not completed if check fails
       }
     } catch (error) {
       console.error("[Auth] Failed to check profile status:", error);
-      // Don't immediately fail - might be a temporary network issue
-      console.log('[Auth] Profile status check failed, will retry later...');
       setProfileCompleted(false); // Default to not completed if check fails
-      
-      // Show notification instead of redirecting
-      console.log('[Auth] Profile not completed - showing notification instead of redirect');
     }
-  }, []);
+  }, [loading]);
 
-  const checkPasswordSetup = useCallback(async () => {
+  const checkPasswordSetupRequired = useCallback(async () => {
     try {
-      console.log('[Auth] Checking password setup requirement...');
-      const token = localStorage.getItem('authToken');
-      if (!token) return;
+      if (!email) {
+        console.log('[Auth] No email available for password setup check');
+        setPasswordSetupRequired(false);
+        return;
+      }
 
-      // Get user email from token
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const email = payload.email;
-      
-      if (!email) return;
-
+      console.log('[Auth] Checking password setup status for:', email);
       const res = await AuthAPI.getPasswordSetupStatus(email);
-      const passwordSetupRequired = res.result || false;
-      console.log('[Auth] Password setup required:', passwordSetupRequired);
-      setPasswordSetupRequired(passwordSetupRequired);
+      console.log('[Auth] Password setup API response:', res);
+      
+      if (res.code === 1000 && res.result !== undefined && res.result !== null) {
+        console.log('[Auth] Password setup required:', res.result);
+        setPasswordSetupRequired(res.result);
+      } else {
+        console.log('[Auth] Password setup check failed:', res.message);
+        setPasswordSetupRequired(false);
+      }
     } catch (error) {
-      console.error("[Auth] Failed to check password setup:", error);
+      console.error('[Auth] Failed to check password setup status:', error);
       setPasswordSetupRequired(false);
     }
-  }, []);
+  }, [email]);
 
   const performIntrospect = useCallback(async (jwt: string) => {
     try {
       console.log('[Auth] Performing token introspect...');
-      
-      // Save token to globalThis.localStorage first (only on client side)
-      if (globalThis.window !== undefined) {
-        globalThis.localStorage.setItem("authToken", jwt);
-      }
-      setToken(jwt);
-      
       const res = await AuthAPI.introspect(jwt);
       
       if (res.code === 1000 && res.result?.valid) {
         console.log('[Auth] Token is valid, setting user info...');
+        console.log('[Auth] Introspect result:', res.result);
         setId(res.result.id ?? null);
         setEmail(res.result.email ?? null);
         setUsername(res.result.email ?? null); // Use email as username for now
+        console.log('[Auth] Setting role to:', res.result.role);
+        setRole(res.result.role ?? null);
         
-        // Handle role - can be either string or number from backend
-        const roleValue = res.result.role;
-        if (typeof roleValue === 'number') {
-          // Backend returns role as ID
-          setRoleId(roleValue as RoleId);
-          setRole(ROLE_ID_TO_STRING[roleValue as RoleId] || null);
-        } else if (typeof roleValue === 'string') {
-          // Backend returns role as string
-          setRole(roleValue as UserRole);
-          setRoleId(ROLE_STRING_TO_ID[roleValue as UserRole] || null);
-        } else {
-          setRole(null);
-          setRoleId(null);
-        }
-        
-        // Check profile status and password setup after successful introspect
+        // Always check profile status after successful introspect for new Google users
         await checkProfileStatus();
-        await checkPasswordSetup();
+        
+        // Check password setup status for Google users
+        await checkPasswordSetupRequired();
       } else {
         console.log('[Auth] Token is invalid, cleaning up...');
         // invalid token -> cleanup
-        if (globalThis.window !== undefined) {
-          globalThis.localStorage.removeItem("authToken");
-        }
+        localStorage.removeItem("authToken");
         setToken(null);
         setId(null);
         setEmail(null);
         setUsername(null);
         setRole(null);
-        setRoleId(null);
         setProfileCompleted(true);
       }
     } catch (error) {
       console.error('[Auth] Introspect failed:', error);
-      // Only clear token if it's definitely invalid, not on network errors     
-      if ((error as any)?.message?.includes('Token invalid') || (error as any)?.message?.includes('Token validation failed')) {                                 
-        console.log('[Auth] Token is definitely invalid, cleaning up...');      
-        if (globalThis.window !== undefined) {
-          globalThis.localStorage.removeItem("authToken");
-        }
-        setToken(null);
-        setId(null);
-        setEmail(null);
-        setUsername(null);
-        setRole(null);
-        setProfileCompleted(true);
-      } else {
-        console.log('[Auth] Network or other error, keeping token for retry...');                                                                               
-        // Don't clear token on network errors
-      }
+      // Token is invalid or network error -> cleanup
+      localStorage.removeItem("authToken");
+      setToken(null);
+      setId(null);
+      setEmail(null);
+      setUsername(null);
+      setRole(null);
+      setProfileCompleted(true);
     }
-  }, [checkProfileStatus, checkPasswordSetup]);
+  }, [checkProfileStatus]);
 
   useEffect(() => {
-    // Only run on client side to avoid hydration mismatch
-    if (globalThis.window === undefined) {
-      setLoading(false);
-      return;
-    }
-
     // Check for token in URL parameters first (for OAuth callback)
-    const urlParams = new URLSearchParams(globalThis.window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('token');
     
     if (urlToken) {
       console.log('[Auth] Found token in URL, processing...');
       // Clean URL to remove token parameter first
-      globalThis.window.history.replaceState({}, globalThis.document.title, globalThis.window.location.pathname);
+      window.history.replaceState({}, document.title, window.location.pathname);
       
       // Save token to localStorage immediately
-      if (globalThis.window !== undefined) {
-        globalThis.localStorage.setItem("authToken", urlToken);
-      }
+      localStorage.setItem("authToken", urlToken);
       setToken(urlToken);
       
       // Perform introspect - it will handle user info extraction
@@ -177,8 +167,8 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       return;
     }
     
-    // Check globalThis.localStorage for existing token
-    const jwt = globalThis.localStorage.getItem("authToken");
+    // Check localStorage for existing token
+    const jwt = localStorage.getItem("authToken");
     if (!jwt) {
       console.log('[Auth] No token found in localStorage');
       setLoading(false);
@@ -188,24 +178,10 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     console.log('[Auth] Found token in localStorage, validating...');
     setToken(jwt);
     performIntrospect(jwt).finally(() => setLoading(false));
-    
-    // Listen for password setup completion
-    const handlePasswordSetupCompleted = () => {
-      console.log('[Auth] Password setup completed, refreshing status...');
-      checkPasswordSetup();
-    };
-
-    globalThis.addEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
-    
-    return () => {
-      globalThis.removeEventListener('passwordSetupCompleted', handlePasswordSetupCompleted);
-    };
-  }, [performIntrospect, checkPasswordSetup]);
+  }, [performIntrospect]);
 
   const login = useCallback(async (jwt: string) => {
-    if (globalThis.window !== undefined) {
-      globalThis.localStorage.setItem("authToken", jwt);
-    }
+    localStorage.setItem("authToken", jwt);
     setToken(jwt);
     await performIntrospect(jwt);
     await checkProfileStatus();
@@ -222,16 +198,14 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
       // Continue with local logout even if API call fails
     } finally {
       // Clear local storage and state
-      if (globalThis.window !== undefined) {
-        globalThis.localStorage.removeItem("authToken");
-      }
+      localStorage.removeItem("authToken");
       setToken(null);
       setId(null);
       setEmail(null);
       setUsername(null);
       setRole(null);
-      setRoleId(null);
       setProfileCompleted(true);
+      setPasswordSetupRequired(false);
       router.push("/auth/login");
     }
   }, [router, token]);
@@ -242,15 +216,14 @@ export function AuthProvider({ children }: { readonly children: React.ReactNode 
     email, 
     username, 
     role, 
-    roleId,
     profileCompleted, 
     passwordSetupRequired,
     loading, 
     login, 
     logout, 
     checkProfileStatus,
-    checkPasswordSetup
-  }), [token, id, email, username, role, roleId, profileCompleted, passwordSetupRequired, loading, login, logout, checkProfileStatus, checkPasswordSetup]);
+    checkPasswordSetupRequired
+  }), [token, id, email, username, role, profileCompleted, passwordSetupRequired, loading, login, logout, checkProfileStatus, checkPasswordSetupRequired]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -260,3 +233,7 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+
+
+
+

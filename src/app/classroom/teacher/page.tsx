@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { usePermissions } from '@/hooks/use-permissions';
 import { classroomService } from '@/lib/services/classroom.service';
-import { Classroom, Assignment, Quiz } from '@/types/classroom';
+import { Classroom, Assignment, Quiz } from '@/lib/dto/classroom';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 

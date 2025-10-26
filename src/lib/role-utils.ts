@@ -1,4 +1,4 @@
-import { UserRole, RoleId, ROLE_ID_TO_STRING, ROLE_STRING_TO_ID } from '@/types/classroom';
+import { UserRole, RoleId, ROLE_ID_TO_STRING, ROLE_STRING_TO_ID } from '@/lib/dto/classroom';
 
 /**
  * Convert role ID to role string

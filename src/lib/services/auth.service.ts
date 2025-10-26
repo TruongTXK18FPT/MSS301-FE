@@ -1,12 +1,6 @@
 import { apiFetch, API_BASE_URL, type ApiResponse } from "@/lib/api";
-import { IntrospectResponse, LoginRequest, LoginResponse, RegisterRequest, VerifyEmailRequest, ProfileCompletionRequest, ProfileStatusResponse } from "@/types/auth";
+import { IntrospectResponse, LoginRequest, LoginResponse, RegisterRequest, VerifyEmailRequest, ProfileCompletionRequest, ProfileStatusResponse, ChangePasswordRequest } from "@/lib/dto/auth";
 import { profileService } from "@/lib/services/profileService";
-
-export interface ChangePasswordRequest {
-  currentPassword?: string;
-  newPassword: string;
-  confirmPassword: string;
-}
 
 export const AuthAPI = {
   login: async (data: LoginRequest) => {
@@ -67,8 +61,14 @@ export const AuthAPI = {
       throw error;
     }
   },
-  resendOTP: async (email: string) => {
-    return apiFetch<unknown>(`/authenticate/users/resend-otp?email=${encodeURIComponent(email)}`, {
+  resendEmailVerificationOTP: async (email: string) => {
+    return apiFetch<unknown>(`/authenticate/auth/resend-email-verification?email=${encodeURIComponent(email)}`, {
+      method: "POST",
+    });
+  },
+
+  resendPasswordResetOTP: async (email: string) => {
+    return apiFetch<unknown>(`/authenticate/auth/resend-password-reset?email=${encodeURIComponent(email)}`, {
       method: "POST",
     });
   },
@@ -97,6 +97,11 @@ export const AuthAPI = {
 
   // Password management functions
   changePassword: async (data: ChangePasswordRequest) => {
+    console.log('[AuthAPI] Change password request:', {
+      hasCurrentPassword: !!data.currentPassword,
+      hasNewPassword: !!data.newPassword
+    });
+    
     return apiFetch<unknown>(`/authenticate/auth/change-password`, {
       method: "POST",
       body: JSON.stringify(data),
@@ -104,26 +109,10 @@ export const AuthAPI = {
   },
 
   setupPasswordForGoogleUser: async (email: string, newPassword: string) => {
-    // This is a PUBLIC endpoint, so we don't use apiFetch (which adds Authorization header)
-    const response = await fetch(`${API_BASE_URL}/authenticate/auth/google/setup-password?email=${encodeURIComponent(email)}&newPassword=${encodeURIComponent(newPassword)}`, {
+    // This is now a PRIVATE endpoint, so we use apiFetch (which adds Authorization header)
+    return apiFetch<unknown>(`/authenticate/auth/google/setup-password?email=${encodeURIComponent(email)}&newPassword=${encodeURIComponent(newPassword)}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Setup password failed:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
-      });
-      throw new Error(`Failed to setup password: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data;
   },
 
   resetPassword: async (data: { email: string; otp: string; newPassword: string }) => {
@@ -203,55 +192,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Kiểm tra xem user có cần setup password không
-   */
-  async checkPasswordSetupRequired(): Promise<boolean> {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return false;
-
-      // Get user email from token
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const email = payload.email;
-      
-      if (!email) return false;
-
-      const res = await AuthAPI.getPasswordSetupStatus(email);
-      return res.result || false;
-    } catch (error) {
-      console.error('Error checking password setup:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Setup password cho Google users
-   */
-  async setupPassword(password: string, email?: string): Promise<void> {
-    try {
-      if (!email) {
-        throw new Error('Email is required for password setup');
-      }
-      
-      console.log('Setup password request:', {
-        email,
-        hasPassword: !!password
-      });
-
-      // Use the AuthAPI service (through gateway)
-      await AuthAPI.setupPasswordForGoogleUser(email, password);
-      
-      // After successful setup, refresh auth context to update passwordSetupRequired status
-      if (typeof window !== 'undefined') {
-        // Trigger a page refresh or context update
-        window.dispatchEvent(new CustomEvent('passwordSetupCompleted'));
-      }
-    } catch (error) {
-      console.error('Setup password error:', error);
-      throw error;
-    }
-  }
 }
 
 export const authService = new AuthService();

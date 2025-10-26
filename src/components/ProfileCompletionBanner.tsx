@@ -8,10 +8,22 @@ import { useAuth } from "@/context/auth-context";
 export function ProfileCompletionBanner() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState(false);
-  const { profileCompleted } = useAuth();
+  const { profileCompleted, role } = useAuth();
 
-  // Don't show if profile is completed or banner is dismissed
-  if (dismissed || profileCompleted) return null;
+  // Debug logging
+  console.log('[ProfileCompletionBanner] State:', { profileCompleted, role, dismissed });
+
+  // Don't show if profile is completed, banner is dismissed, or user is not STUDENT
+  if (dismissed || profileCompleted || role !== 'STUDENT') {
+    console.log('[ProfileCompletionBanner] Not showing banner. Reasons:', { 
+      dismissed, 
+      profileCompleted, 
+      roleNotStudent: role !== 'STUDENT' 
+    });
+    return null;
+  }
+
+  console.log('[ProfileCompletionBanner] Showing banner!');
 
   return (
     <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-pink-500/20 border-b border-amber-400/30 backdrop-blur-sm">

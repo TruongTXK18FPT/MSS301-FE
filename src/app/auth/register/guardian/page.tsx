@@ -11,7 +11,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RegisterRequest } from "@/types/auth";
+import { RegisterRequest } from "@/lib/dto/auth";
 import { Eye, EyeOff, Mail, Lock, User, Sparkles, Users, Phone, Heart } from "lucide-react";
 import Link from "next/link";
 
@@ -19,7 +19,6 @@ const schema = z.object({
   name: z.string().min(1, "Vui lòng nhập họ tên"),
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
-  guardianStudentEmail: z.string().email("Email học sinh không hợp lệ"),
   relationship: z.string().min(1, "Vui lòng nhập quan hệ"),
   phone: z.string().min(9, "Số điện thoại không hợp lệ"),
   confirmPassword: z.string().min(6, "Vui lòng xác nhận mật khẩu"),
@@ -62,6 +61,11 @@ export default function GuardianRegisterPage() {
           <CardDescription className="text-pink-200/80 mt-2">
             Đồng hành cùng con trong hành trình học tập
           </CardDescription>
+          <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-3 mt-4">
+            <p className="text-blue-200 text-sm text-center">
+              💡 Sau khi đăng ký, bạn có thể thêm học sinh vào danh sách quản lý trong trang profile
+            </p>
+          </div>
         </CardHeader>
         
         <CardContent className="space-y-6 relative z-10">
@@ -177,32 +181,11 @@ export default function GuardianRegisterPage() {
               </p>}
             </div>
 
-            {/* Email học sinh */}
-            <div className="space-y-2">
-              <Label className="text-pink-200 font-medium flex items-center gap-2">
-                <Users className="size-4" />
-                Email học sinh
-              </Label>
-              <div className="relative">
-                <Input 
-                  type="email" 
-                  placeholder="student@domain.com" 
-                  {...register('guardianStudentEmail')}
-                  className="bg-black/40 border-purple-400/30 text-white rounded-xl backdrop-blur-sm focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 hover:border-purple-400/50 pl-4"
-                />
-                <Users className="absolute right-3 top-1/2 transform -translate-y-1/2 size-4 text-purple-400 opacity-50" />
-              </div>
-              {errors.guardianStudentEmail && <p className="text-sm text-red-400 flex items-center gap-1">
-                <span className="text-red-500">⚠</span>
-                {errors.guardianStudentEmail.message}
-              </p>}
-            </div>
-
             {/* Quan hệ */}
             <div className="space-y-2">
               <Label className="text-pink-200 font-medium flex items-center gap-2">
                 <Heart className="size-4" />
-                Quan hệ với học sinh
+                Mối quan hệ
               </Label>
               <div className="relative">
                 <Input 
