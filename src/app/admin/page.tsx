@@ -8,11 +8,12 @@ import AdminSidebar from '@/components/admin/admin-sidebar';
 import AdminHeader from '@/components/admin/admin-header';
 import AnalyticsDashboard from '@/components/admin/analytics-dashboard';
 import UserManagement from '@/components/admin/user-management';
+import TeacherRegistrationsPage from './teacher-registrations/page';
 import ClassroomManagement from '@/components/admin/classroom-management';
 import TenantManagement from '@/components/admin/tenant-management';
 import SubscriptionManagement from '@/components/admin/subscription-management';
 
-type AdminTab = 'analytics' | 'users' | 'classrooms' | 'tenants' | 'subscriptions';
+type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('analytics');
@@ -24,6 +25,8 @@ export default function AdminDashboard() {
         return <AnalyticsDashboard />;
       case 'users':
         return <UserManagement />;
+      case 'teacher-registrations':
+        return <TeacherRegistrationsPage />;
       case 'classrooms':
         return <ClassroomManagement />;
       case 'tenants':

@@ -77,10 +77,17 @@ export default function TeacherRegisterPage() {
               password: values.password,
               confirmPassword: values.confirmPassword,
               userType: 'TEACHER',
+              // Teacher-specific fields
+              department: values.department,
+              specialization: values.specialization,
+              yearsOfExperience: values.yearsOfExperience,
+              qualifications: values.qualifications,
+              bio: values.bio,
+              phone: values.phone,
             };
             const res = await AuthAPI.register(payload);
             if (res.code === 1000) {
-              toast({ description: 'Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.' });
+              toast({ description: 'Đăng ký thành công. Vui lòng kiểm tra email để xác nhận OTP.' });
               router.push('/auth/verify-otp?email=' + encodeURIComponent(values.email));
             } else {
               toast({ description: res.message || 'Đăng ký thất bại', variant: 'destructive' });

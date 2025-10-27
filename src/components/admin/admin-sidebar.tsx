@@ -15,9 +15,11 @@ import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions';
+
 interface AdminSidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab: AdminTab;
+  onTabChange: (tab: AdminTab) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -34,6 +36,12 @@ const menuItems = [
     label: 'Quản lý Users',
     icon: Users,
     description: 'Quản lý người dùng'
+  },
+  {
+    id: 'teacher-registrations',
+    label: 'Quản lý đơn đăng ký giáo viên',
+    icon: GraduationCap,
+    description: 'Duyệt đơn đăng ký giáo viên'
   },
   {
     id: 'classrooms',
@@ -107,12 +115,12 @@ export default function AdminSidebar({ activeTab, onTabChange, isOpen, onClose }
                 <button
                   key={item.id}
                   onClick={() => {
-                    onTabChange(item.id);
+                    onTabChange(item.id as AdminTab);
                     onClose();
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                      onTabChange(item.id);
+                      onTabChange(item.id as AdminTab);
                       onClose();
                     }
                   }}

@@ -25,6 +25,14 @@ export interface RegisterRequest {
   password: string;
   confirmPassword: string;
   userType: "STUDENT" | "TEACHER" | "GUARDIAN";
+  
+  // Teacher-specific fields (optional)
+  department?: string;
+  specialization?: string;
+  yearsOfExperience?: number;
+  qualifications?: string;
+  bio?: string;
+  phone?: string;
 }
 
 export interface VerifyEmailRequest {

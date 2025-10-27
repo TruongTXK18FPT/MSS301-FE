@@ -41,11 +41,17 @@ export default function VerifyOTPPage() {
     try {
       const res = await AuthAPI.verifyEmail({ email, otpCode });
       if (res.code === 1000) {
+        // Check if this is a teacher registration
         toast({ 
-          description: '✅ Xác minh thành công! Đang chuyển đến trang đăng nhập...',
+          description: '✅ Email đã được xác minh thành công!',
           className: 'bg-green-500/20 border-green-500/50'
         });
-        setTimeout(() => router.push('/auth/login'), 1500);
+        // For teachers, show a message that they need to wait for admin approval
+        toast({ 
+          description: 'Đơn đăng ký giáo viên của bạn đang được quản trị viên xem xét. Bạn sẽ nhận được email khi đơn được duyệt.',
+          className: 'bg-blue-500/20 border-blue-500/50'
+        });
+        setTimeout(() => router.push('/auth/login'), 3000);
       } else {
         toast({ 
           description: res.message || '❌ Mã OTP không đúng hoặc đã hết hạn', 

@@ -51,6 +51,12 @@ export default function ProfilePage() {
       router.push('/profile/guardian');
       return;
     }
+
+    // Redirect teacher users to teacher profile page
+    if (role === 'TEACHER') {
+      router.push('/profile/teacher');
+      return;
+    }
     
     loadUserData();
   }, [role, router]);
