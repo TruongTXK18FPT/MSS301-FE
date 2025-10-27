@@ -1,5 +1,17 @@
 import { mindmapApi } from './axios';
-import { MindmapResponse, ApiResponse } from '../dto';
+import { 
+  MindmapResponse, 
+  ApiResponse,
+  ExerciseRequest,
+  ExerciseResponse,
+  FormulaRequest,
+  FormulaResponse,
+  ConceptRequest,
+  ConceptResponse,
+  ClassroomMindmapRequest,
+  ClassroomMindmapResponse,
+  GenerateExerciseRequest
+} from '../dto';
 
 class MindmapService {
   /**
@@ -7,7 +19,7 @@ class MindmapService {
    */
   async getUserMindmaps(): Promise<MindmapResponse[]> {
     try {
-      const response = await mindmapApi.get<ApiResponse<MindmapResponse[]>>('/mindmap');
+      const response = await mindmapApi.get<ApiResponse<MindmapResponse[]>>('');
       return response.data.result || [];
     } catch (error: any) {
       console.error('Error fetching user mindmaps:', error);
@@ -23,9 +35,10 @@ class MindmapService {
     description?: string;
     grade: string;
     subject: string;
+    visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASSROOM';
   }): Promise<MindmapResponse> {
     try {
-      const response = await mindmapApi.post<ApiResponse<MindmapResponse>>('/mindmap', data);
+      const response = await mindmapApi.post<ApiResponse<MindmapResponse>>('', data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Tạo mindmap thất bại');
@@ -42,12 +55,28 @@ class MindmapService {
     subject: string;
     aiProvider: 'MISTRAL' | 'GEMINI';
     aiModel?: string;
+    visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASSROOM';
   }): Promise<any> {
     try {
-      const response = await mindmapApi.post<ApiResponse<any>>('/mindmap/generate', data);
-      return response.data.result!;
+      console.log('[MindmapService] Calling generate mindmap with data:', data);
+      const response = await mindmapApi.post<ApiResponse<any>>('/generate', data);
+      console.log('[MindmapService] Response:', response.data);
+      
+      const result = (response.data as any).data || response.data.result;
+      
+      if (!result) {
+        console.error('[MindmapService] No data in response:', response.data);
+        throw new Error(response.data.message || 'Không nhận được dữ liệu mindmap');
+      }
+      
+      return result;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Tạo mindmap với AI thất bại');
+      console.error('[MindmapService] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw new Error(error.response?.data?.message || error.message || 'Tạo mindmap với AI thất bại');
     }
   }
 
@@ -56,10 +85,28 @@ class MindmapService {
    */
   async getMindmapById(id: number): Promise<MindmapResponse> {
     try {
-      const response = await mindmapApi.get<ApiResponse<MindmapResponse>>(`/mindmap/${id}`);
+      const response = await mindmapApi.get<ApiResponse<MindmapResponse>>(`/${id}`);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy mindmap thất bại');
+    }
+  }
+
+  /**
+   * Cập nhật mindmap
+   */
+  async updateMindmap(id: number, data: {
+    title?: string;
+    description?: string;
+    visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASSROOM';
+    nodes?: any[];
+    edges?: any[];
+  }): Promise<MindmapResponse> {
+    try {
+      const response = await mindmapApi.put<ApiResponse<MindmapResponse>>(`/${id}`, data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Cập nhật mindmap thất bại');
     }
   }
 
@@ -68,7 +115,7 @@ class MindmapService {
    */
   async deleteMindmap(id: number): Promise<void> {
     try {
-      await mindmapApi.delete(`/mindmap/${id}`);
+      await mindmapApi.delete(`/${id}`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Xóa mindmap thất bại');
     }
@@ -79,11 +126,243 @@ class MindmapService {
    */
   async searchMindmaps(keyword: string): Promise<MindmapResponse[]> {
     try {
-      const response = await mindmapApi.get<ApiResponse<MindmapResponse[]>>(`/mindmap/search?keyword=${encodeURIComponent(keyword)}`);
+      const response = await mindmapApi.get<ApiResponse<MindmapResponse[]>>(`/search?keyword=${encodeURIComponent(keyword)}`);
       return response.data.result || [];
     } catch (error: any) {
       console.error('Error searching mindmaps:', error);
       return [];
+    }
+  }
+
+  // ==================== EXERCISE API ====================
+  
+  /**
+   * Tạo bài tập mới
+   */
+  async createExercise(data: ExerciseRequest): Promise<ExerciseResponse> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<ExerciseResponse>>('/exercise', data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Tạo bài tập thất bại');
+    }
+  }
+
+  /**
+   * Lấy bài tập theo ID
+   */
+  async getExercise(id: number): Promise<ExerciseResponse> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<ExerciseResponse>>(`/exercise/${id}`);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy bài tập thất bại');
+    }
+  }
+
+  /**
+   * Lấy tất cả bài tập của một node
+   */
+  async getExercisesByNode(nodeId: number): Promise<ExerciseResponse[]> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<ExerciseResponse[]>>(`/exercise/node/${nodeId}`);
+      return response.data.result || [];
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy bài tập thất bại');
+    }
+  }
+
+  /**
+   * Cập nhật bài tập
+   */
+  async updateExercise(id: number, data: Partial<ExerciseRequest>): Promise<ExerciseResponse> {
+    try {
+      const response = await mindmapApi.put<ApiResponse<ExerciseResponse>>(`/exercise/${id}`, data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Cập nhật bài tập thất bại');
+    }
+  }
+
+  /**
+   * Xóa bài tập
+   */
+  async deleteExercise(id: number): Promise<void> {
+    try {
+      await mindmapApi.delete(`/exercise/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Xóa bài tập thất bại');
+    }
+  }
+
+  /**
+   * Tạo bài tập với AI
+   */
+  async generateExercises(data: GenerateExerciseRequest): Promise<ExerciseResponse[]> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<ExerciseResponse[]>>('/exercise/generate', data);
+      return response.data.result || [];
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Tạo bài tập với AI thất bại');
+    }
+  }
+
+  // ==================== FORMULA API ====================
+  
+  /**
+   * Tạo công thức mới
+   */
+  async createFormula(data: FormulaRequest): Promise<FormulaResponse> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<FormulaResponse>>('/formula', data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Tạo công thức thất bại');
+    }
+  }
+
+  /**
+   * Lấy công thức theo ID
+   */
+  async getFormula(id: number): Promise<FormulaResponse> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<FormulaResponse>>(`/formula/${id}`);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy công thức thất bại');
+    }
+  }
+
+  /**
+   * Lấy tất cả công thức của một node
+   */
+  async getFormulasByNode(nodeId: number): Promise<FormulaResponse[]> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<FormulaResponse[]>>(`/formula/node/${nodeId}`);
+      return response.data.result || [];
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy công thức thất bại');
+    }
+  }
+
+  /**
+   * Cập nhật công thức
+   */
+  async updateFormula(id: number, data: Partial<FormulaRequest>): Promise<FormulaResponse> {
+    try {
+      const response = await mindmapApi.put<ApiResponse<FormulaResponse>>(`/formula/${id}`, data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Cập nhật công thức thất bại');
+    }
+  }
+
+  /**
+   * Xóa công thức
+   */
+  async deleteFormula(id: number): Promise<void> {
+    try {
+      await mindmapApi.delete(`/formula/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Xóa công thức thất bại');
+    }
+  }
+
+  // ==================== CONCEPT API ====================
+  
+  /**
+   * Tạo khái niệm mới
+   */
+  async createConcept(data: ConceptRequest): Promise<ConceptResponse> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<ConceptResponse>>('/concept', data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Tạo khái niệm thất bại');
+    }
+  }
+
+  /**
+   * Lấy khái niệm theo ID
+   */
+  async getConcept(id: number): Promise<ConceptResponse> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<ConceptResponse>>(`/concept/${id}`);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy khái niệm thất bại');
+    }
+  }
+
+  /**
+   * Lấy tất cả khái niệm của một node
+   */
+  async getConceptsByNode(nodeId: number): Promise<ConceptResponse[]> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<ConceptResponse[]>>(`/concept/node/${nodeId}`);
+      return response.data.result || [];
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy khái niệm thất bại');
+    }
+  }
+
+  /**
+   * Cập nhật khái niệm
+   */
+  async updateConcept(id: number, data: Partial<ConceptRequest>): Promise<ConceptResponse> {
+    try {
+      const response = await mindmapApi.put<ApiResponse<ConceptResponse>>(`/concept/${id}`, data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Cập nhật khái niệm thất bại');
+    }
+  }
+
+  /**
+   * Xóa khái niệm
+   */
+  async deleteConcept(id: number): Promise<void> {
+    try {
+      await mindmapApi.delete(`/concept/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Xóa khái niệm thất bại');
+    }
+  }
+
+  // ==================== CLASSROOM MINDMAP API ====================
+  
+  /**
+   * Chia sẻ mindmap với lớp học
+   */
+  async shareMindmapToClassroom(data: ClassroomMindmapRequest): Promise<ClassroomMindmapResponse> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<ClassroomMindmapResponse>>('/classroom', data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Chia sẻ mindmap thất bại');
+    }
+  }
+
+  /**
+   * Lấy danh sách lớp học đã chia sẻ mindmap
+   */
+  async getSharedClassrooms(mindmapId: number): Promise<ClassroomMindmapResponse[]> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<ClassroomMindmapResponse[]>>(`/classroom/mindmap/${mindmapId}`);
+      return response.data.result || [];
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy danh sách lớp học thất bại');
+    }
+  }
+
+  /**
+   * Hủy chia sẻ mindmap với lớp học
+   */
+  async unshareFromClassroom(id: number): Promise<void> {
+    try {
+      await mindmapApi.delete(`/classroom/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Hủy chia sẻ thất bại');
     }
   }
 }

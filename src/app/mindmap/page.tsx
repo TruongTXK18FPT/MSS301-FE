@@ -4,85 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Plus, Search, Star, Calendar, Eye, Edit, Trash2, Download, Share } from "lucide-react";
-import Link from "next/link";
+import { Brain, Plus, Search, Calendar, Edit, Trash2, Share, Eye, Lock, Globe, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { mindmapService } from "@/lib/services/mindmapService";
 import MindmapCreateForm from "@/components/mindmap/MindmapCreateForm";
 import MindmapEditor from "@/components/mindmap/MindmapEditor";
 
-// Mock data for mindmaps
-const mindmapTemplates = [
-  {
-    id: 1,
-    title: "Đại số cơ bản",
-    description: "Tổng quan về đại số lớp 6-7",
-    category: "Đại số",
-    grade: "6-7",
-    nodes: 15,
-    isTemplate: true,
-    preview: "Variables → Expressions → Equations",
-    color: "from-blue-500 to-cyan-500"
-  },
-  {
-    id: 2,
-    title: "Hình học phẳng",
-    description: "Các hình cơ bản và công thức",
-    category: "Hình học",
-    grade: "8-9",
-    nodes: 20,
-    isTemplate: true,
-    preview: "Tam giác → Tứ giác → Đường tròn",
-    color: "from-green-500 to-emerald-500"
-  },
-  {
-    id: 3,
-    title: "Phương trình bậc hai",
-    description: "Giải và ứng dụng phương trình bậc 2",
-    category: "Đại số",
-    grade: "9-10",
-    nodes: 12,
-    isTemplate: true,
-    preview: "ax² + bx + c = 0 → Delta → Nghiệm",
-    color: "from-purple-500 to-violet-500"
-  },
-  {
-    id: 4,
-    title: "Lượng giác cơ bản",
-    description: "Sin, Cos, Tan và ứng dụng",
-    category: "Lượng giác",
-    grade: "10-11",
-    nodes: 18,
-    isTemplate: true,
-    preview: "Đường tròn → Góc → Hàm số",
-    color: "from-orange-500 to-red-500"
-  }
-];
-
-const userMindmaps = [
-  {
-    id: 101,
-    title: "Bài tập Toán 9",
-    description: "Ôn tập kiểm tra giữa kỳ",
-    category: "Cá nhân",
-    grade: "9",
-    nodes: 8,
-    isTemplate: false,
-    lastModified: "2 ngày trước",
-    color: "from-pink-500 to-rose-500"
-  },
-  {
-    id: 102,
-    title: "Hệ phương trình",
-    description: "Phương pháp giải hệ PT",
-    category: "Cá nhân", 
-    grade: "9",
-    nodes: 6,
-    isTemplate: false,
-    lastModified: "1 tuần trước",
-    color: "from-indigo-500 to-purple-500"
-  }
-];
+// Removed hardcoded templates - now only showing user-created mindmaps
 
 export default function MindMapPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -90,9 +18,10 @@ export default function MindMapPage() {
   const [brainIcons, setBrainIcons] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
 
   const [userMindmaps, setUserMindmaps] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingMindmap, setEditingMindmap] = useState<any>(null);
+  const [viewingMindmap, setViewingMindmap] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     // Generate brain icons positions on client side only to avoid hydration mismatch
@@ -110,13 +39,10 @@ export default function MindMapPage() {
 
   const loadMindmaps = async () => {
     try {
-      setLoading(true);
       const mindmaps = await mindmapService.getUserMindmaps();
       setUserMindmaps(mindmaps);
     } catch (error) {
       console.error('Failed to load mindmaps:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -130,22 +56,67 @@ export default function MindMapPage() {
     setEditingMindmap(mindmap);
   };
 
-  const handleCloseEditor = () => {
-    setEditingMindmap(null);
+  const handleViewMindmap = async (mindmap: any) => {
+    try {
+      const fullMindmap = await mindmapService.getMindmapById(mindmap.id);
+      setViewingMindmap(fullMindmap);
+    } catch (error) {
+      console.error('Failed to load mindmap:', error);
+    }
   };
 
-  const categories = ["all", "Đại số", "Hình học", "Lượng giác", "Cá nhân"];
+  const handleDeleteMindmap = async (id: number) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa mindmap này?')) return;
+    
+    setIsDeleting(true);
+    try {
+      await mindmapService.deleteMindmap(id);
+      setUserMindmaps(prev => prev.filter(m => m.id !== id));
+    } catch (error) {
+      console.error('Failed to delete mindmap:', error);
+      alert('Xóa mindmap thất bại');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
-  const filteredTemplates = mindmapTemplates.filter(template =>
-    (selectedCategory === "all" || template.category === selectedCategory) &&
-    template.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleCloseEditor = () => {
+    setEditingMindmap(null);
+    loadMindmaps(); // Reload to get updated data
+  };
+
+  const handleCloseViewer = () => {
+    setViewingMindmap(null);
+  };
+
+  const getVisibilityIcon = (visibility?: string) => {
+    switch (visibility) {
+      case 'PUBLIC':
+        return <Globe className="size-4 text-green-400" />;
+      case 'CLASSROOM':
+        return <Users className="size-4 text-blue-400" />;
+      default:
+        return <Lock className="size-4 text-gray-400" />;
+    }
+  };
+
+  const getVisibilityLabel = (visibility?: string) => {
+    switch (visibility) {
+      case 'PUBLIC':
+        return 'Công khai';
+      case 'CLASSROOM':
+        return 'Lớp học';
+      default:
+        return 'Riêng tư';
+    }
+  };
+
+  const categories = ["all", "Cá nhân"];
 
   const filteredUserMindmaps = userMindmaps.filter(mindmap =>
     mindmap && 
     (selectedCategory === "all" || selectedCategory === "Cá nhân") &&
-    mindmap.title && 
-    mindmap.title.toLowerCase().includes(searchTerm.toLowerCase())
+    mindmap.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -158,9 +129,9 @@ export default function MindMapPage() {
         
         {/* Floating Brain Icons */}
         <div className="absolute inset-0">
-          {brainIcons.map((icon, i) => (
+          {brainIcons.map((icon, index) => (
             <div
-              key={`brain-${i}`}
+              key={`brain-${icon.left}-${icon.top}-${index}`}
               className="absolute opacity-10 animate-float"
               style={{
                 left: icon.left,
@@ -231,76 +202,7 @@ export default function MindMapPage() {
           </Button>
         </div>
 
-        {/* Templates Section */}
-        {(selectedCategory === "all" || selectedCategory !== "Cá nhân") && (
-          <div className="mb-12">
-            <div className="flex items-center gap-3 mb-6">
-              <Star className="size-6 text-yellow-400" />
-              <h2 className="text-2xl font-bold text-white">Templates toán học</h2>
-              <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-400/30">
-                {filteredTemplates.length} mẫu
-              </Badge>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredTemplates.map((template) => (
-                <Card key={template.id} className="bg-black/40 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 hover:scale-105 overflow-hidden group">
-                  <div className={`h-2 bg-gradient-to-r ${template.color}`}></div>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-bold text-white mb-1 group-hover:text-purple-200 transition-colors">
-                          {template.title}
-                        </CardTitle>
-                        <CardDescription className="text-purple-200/70 text-sm">
-                          {template.description}
-                        </CardDescription>
-                      </div>
-                      <Badge className="bg-purple-500/20 text-purple-300 border-purple-400/30 text-xs">
-                        Lớp {template.grade}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0">
-                    <div className="mb-4">
-                      <p className="text-sm text-purple-200/60 mb-2">Cấu trúc:</p>
-                      <p className="text-sm text-white bg-black/30 rounded-lg px-3 py-2 font-mono">
-                        {template.preview}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2 text-purple-200/70 text-sm">
-                        <Brain className="size-4" />
-                        {template.nodes} nodes
-                      </div>
-                      <div className="flex items-center gap-2 text-purple-200/70 text-sm">
-                        <Star className="size-4 text-yellow-400" />
-                        Template
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Link href={`/mindmap/editor?template=${template.id}`} className="flex-1">
-                        <Button size="sm" className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white rounded-lg">
-                          <Eye className="size-4 mr-1" />
-                          Xem
-                        </Button>
-                      </Link>
-                      <Button size="sm" variant="outline" className="bg-black/30 border-purple-400/30 text-purple-200 hover:bg-purple-500/20 rounded-lg">
-                        <Download className="size-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* User Mindmaps Section */}
-        {(selectedCategory === "all" || selectedCategory === "Cá nhân") && (
           <div>
             <div className="flex items-center gap-3 mb-6">
               <Brain className="size-6 text-pink-400" />
@@ -311,8 +213,8 @@ export default function MindMapPage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredUserMindmaps.map((mindmap) => (
-                <Card key={mindmap.id} className="bg-black/40 backdrop-blur-xl border border-pink-500/30 rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-pink-500/20 transition-all duration-300 hover:scale-105 overflow-hidden group">
+              {filteredUserMindmaps.map((mindmap, index) => (
+                <Card key={`mindmap-${mindmap.id}-${index}`} className="bg-black/40 backdrop-blur-xl border border-pink-500/30 rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-pink-500/20 transition-all duration-300 hover:scale-105 overflow-hidden group">
                   <div className={`h-2 bg-gradient-to-r ${mindmap.color || 'from-pink-500 to-violet-500'}`}></div>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -334,7 +236,7 @@ export default function MindMapPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2 text-pink-200/70 text-sm">
                         <Brain className="size-4" />
-                        {mindmap.nodes || 0} nodes
+                        {Array.isArray(mindmap.nodes) ? mindmap.nodes.length : 0} nodes
                       </div>
                       <div className="flex items-center gap-2 text-pink-200/70 text-sm">
                         <Calendar className="size-4" />
@@ -345,18 +247,35 @@ export default function MindMapPage() {
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 
+                        onClick={() => handleViewMindmap(mindmap)}
+                        className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white rounded-lg"
+                      >
+                        <Eye className="size-4 mr-1" />
+                        Xem
+                      </Button>
+                      <Button 
+                        size="sm" 
                         onClick={() => handleEditMindmap(mindmap)}
                         className="flex-1 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-lg"
                       >
                         <Edit className="size-4 mr-1" />
-                        Chỉnh sửa
+                        Sửa
                       </Button>
-                      <Button size="sm" variant="outline" className="bg-black/30 border-pink-400/30 text-pink-200 hover:bg-pink-500/20 rounded-lg">
-                        <Share className="size-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="bg-black/30 border-red-400/30 text-red-300 hover:bg-red-500/20 rounded-lg">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleDeleteMindmap(mindmap.id)}
+                        disabled={isDeleting}
+                        className="bg-black/30 border-red-400/30 text-red-300 hover:bg-red-500/20 rounded-lg"
+                      >
                         <Trash2 className="size-4" />
                       </Button>
+                    </div>
+                    
+                    {/* Visibility Badge */}
+                    <div className="flex items-center gap-2 mt-3 text-xs text-pink-200/70">
+                      {getVisibilityIcon(mindmap.visibility)}
+                      <span>{getVisibilityLabel(mindmap.visibility)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -378,7 +297,6 @@ export default function MindMapPage() {
               </div>
             )}
           </div>
-        )}
       </div>
 
       {/* Create Form Modal */}
@@ -395,11 +313,27 @@ export default function MindMapPage() {
 
       {/* Mindmap Editor Modal */}
       {editingMindmap && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full h-[90vh] max-w-6xl">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+          <div className="w-full h-full">
             <MindmapEditor
               mindmap={editingMindmap}
               onClose={handleCloseEditor}
+              onSave={(updated: any) => {
+                setUserMindmaps(prev => prev.map(m => m.id === updated.id ? updated : m));
+              }}
+              onDelete={handleDeleteMindmap}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mindmap Viewer Modal */}
+      {viewingMindmap && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+          <div className="w-full h-full">
+            <MindmapEditor
+              mindmap={viewingMindmap}
+              onClose={handleCloseViewer}
             />
           </div>
         </div>

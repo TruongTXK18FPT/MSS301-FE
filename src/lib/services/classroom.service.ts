@@ -15,7 +15,7 @@ class ClassroomService {
   // Classroom Management
   async getMyClassrooms(): Promise<Classroom[]> {
     try {
-      const response = await classroomApi.get<ApiResponse<Classroom[]>>('/classrooms/me');
+      const response = await classroomApi.get<ApiResponse<Classroom[]>>('/me');
       return response.data.result || [];
     } catch (error: any) {
       console.error('Error fetching classrooms:', error);
@@ -25,17 +25,37 @@ class ClassroomService {
 
   async createClassroom(data: CreateClassroomRequest): Promise<Classroom> {
     try {
-      const response = await classroomApi.post<ApiResponse<Classroom>>('/classrooms', data);
-      return response.data.result || {} as Classroom;
+      console.log('[ClassroomService] Creating classroom with data:', data);
+      const response = await classroomApi.post<ApiResponse<Classroom>>('', data);
+      console.log('[ClassroomService] Response:', response.data);
+      
+      // Try both 'data' and 'result' fields
+      const result = (response.data as any).data || response.data.result;
+      
+      if (!result) {
+        console.error('[ClassroomService] No data in response:', response.data);
+        throw new Error('Không nhận được dữ liệu classroom');
+      }
+      
+      return result;
     } catch (error: any) {
-      console.error('Error creating classroom:', error);
-      throw error;
+      console.error('[ClassroomService] Error creating classroom:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      if (error.response?.status === 401) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+      
+      throw new Error(error.response?.data?.message || 'Tạo classroom thất bại');
     }
   }
 
   async updateClassroom(id: number, data: Partial<CreateClassroomRequest>): Promise<Classroom> {
     try {
-      const response = await classroomApi.put<ApiResponse<Classroom>>(`/classrooms/${id}`, data);
+      const response = await classroomApi.put<ApiResponse<Classroom>>(`/${id}`, data);
       return response.data.result || {} as Classroom;
     } catch (error: any) {
       console.error('Error updating classroom:', error);
@@ -45,7 +65,7 @@ class ClassroomService {
 
   async deleteClassroom(id: number): Promise<void> {
     try {
-      await classroomApi.delete(`/classrooms/${id}`);
+      await classroomApi.delete(`/${id}`);
     } catch (error: any) {
       console.error('Error deleting classroom:', error);
       throw error;
@@ -54,7 +74,7 @@ class ClassroomService {
 
   async searchClassrooms(keyword: string): Promise<Classroom[]> {
     try {
-      const response = await classroomApi.get<ApiResponse<Classroom[]>>(`/classrooms/search?keyword=${encodeURIComponent(keyword)}`);
+      const response = await classroomApi.get<ApiResponse<Classroom[]>>(`/search?keyword=${encodeURIComponent(keyword)}`);
       return response.data.result || {} as Classroom;
     } catch (error: any) {
       console.error('Error searching classrooms:', error);
@@ -64,7 +84,7 @@ class ClassroomService {
 
   async joinClassroom(data: JoinClassroomRequest): Promise<Classroom> {
     try {
-      const response = await classroomApi.post<ApiResponse<Classroom>>('/classrooms/join', data);
+      const response = await classroomApi.post<ApiResponse<Classroom>>('/join', data);
       return response.data.result || {} as Classroom;
     } catch (error: any) {
       console.error('Error joining classroom:', error);
@@ -74,7 +94,7 @@ class ClassroomService {
 
   async getClassroomStudents(classroomId: number): Promise<Student[]> {
     try {
-      const response = await classroomApi.get<ApiResponse<Student[]>>(`/classrooms/${classroomId}/students`);
+      const response = await classroomApi.get<ApiResponse<Student[]>>(`/${classroomId}/students`);
       return response.data.result || [];
     } catch (error: any) {
       console.error('Error fetching students:', error);
