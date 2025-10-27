@@ -15,7 +15,7 @@ import { addressService } from '@/lib/services/addressService';
 
 export default function ProfileCompletePage() {
   const router = useRouter();
-  const { email, username, loading: authLoading, checkProfileStatus, passwordSetupRequired, checkPasswordSetupRequired } = useAuth();
+  const { email, username, role, loading: authLoading, checkProfileStatus, passwordSetupRequired, checkPasswordSetupRequired } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -288,7 +288,7 @@ export default function ProfileCompletePage() {
       await profileService.updateCurrentProfile(apiData);
       
       // Refresh profile completion status after successful update
-      await checkProfileStatus();
+      await checkProfileStatus(role);
       
       // Show success message
       alert('Profile đã được cập nhật thành công!');

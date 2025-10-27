@@ -31,7 +31,7 @@ import {
 import { authService } from '@/lib/services/auth.service';
 import { profileService } from '@/lib/services';
 import { UserResponse, GuardianProfileResponse, GuardianProfileWithStudents } from '@/lib/dto';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth-utils';
 import AddStudentModal from '@/components/AddStudentModal';
 
 export default function GuardianProfilePage() {

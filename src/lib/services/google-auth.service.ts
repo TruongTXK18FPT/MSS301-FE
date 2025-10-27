@@ -1,21 +1,6 @@
-import { apiFetch } from '@/lib/api';
-
-export interface GoogleAuthResponse {
-  authenticated: boolean;
-  email?: string;
-  name?: string;
-  givenName?: string;
-  familyName?: string;
-  picture?: string;
-  token?: string;
-  expiryTime?: string;
-}
-
-export interface PasswordSetupRequest {
-  email: string;
-  newPassword: string;
-  confirmPassword: string;
-}
+import { authApi } from './axios';
+import { GoogleAuthResponse, PasswordSetupRequest } from '@/lib/dto/auth';
+import { ApiResponse } from '@/lib/dto/common';
 
 // Profile completion will be handled by profile-service
 
@@ -25,8 +10,9 @@ export class GoogleAuthService {
    */
   static async redirectToGoogle(): Promise<void> {
     try {
-      // Direct redirect to backend endpoint which will handle Google OAuth
-      window.location.href = 'http://localhost:8080/api/v1/authenticate/auth/google/redirect';
+      // Use dynamic URL from authApi configuration
+      const baseURL = authApi.defaults.baseURL; // http://localhost:8080/api/v1/authenticate
+      window.location.href = `${baseURL}/auth/google/redirect`;
     } catch (error) {
       console.error('Failed to redirect to Google OAuth:', error);
       throw error;
@@ -38,11 +24,10 @@ export class GoogleAuthService {
    */
   static async handleCallback(code: string, state: string): Promise<GoogleAuthResponse> {
     try {
-      const response = await apiFetch<GoogleAuthResponse>('/auth/google/callback', {
-        method: 'GET',
+      const response = await authApi.get<ApiResponse<GoogleAuthResponse>>('/auth/google/callback', {
         params: { code, state }
       });
-      return response.result;
+      return response.data.result!;
     } catch (error) {
       console.error('Failed to handle Google OAuth callback:', error);
       throw error;
@@ -54,12 +39,9 @@ export class GoogleAuthService {
    */
   static async setupPassword(request: PasswordSetupRequest): Promise<void> {
     try {
-      await apiFetch('/auth/google/setup-password', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: request.email,
-          newPassword: request.newPassword
-        })
+      await authApi.post('/auth/google/setup-password', {
+        email: request.email,
+        newPassword: request.newPassword
       });
     } catch (error) {
       console.error('Failed to setup password:', error);
@@ -72,11 +54,10 @@ export class GoogleAuthService {
    */
   static async isPasswordSetupRequired(email: string): Promise<boolean> {
     try {
-      const response = await apiFetch<boolean>('/auth/password/check', {
-        method: 'GET',
+      const response = await authApi.get<ApiResponse<boolean>>('/auth/password/check', {
         params: { email }
       });
-      return response.result;
+      return response.data.result ?? false;
     } catch (error) {
       console.error('Failed to check password setup requirement:', error);
       return false;

@@ -1,50 +1,51 @@
-import { apiFetch, API_BASE_URL, type ApiResponse } from "@/lib/api";
+import { authApi } from './axios';
+import { ApiResponse } from '@/lib/dto/common';
 import { IntrospectResponse, LoginRequest, LoginResponse, RegisterRequest, VerifyEmailRequest, ProfileCompletionRequest, ProfileStatusResponse, ChangePasswordRequest } from "@/lib/dto/auth";
 import { profileService } from "@/lib/services/profileService";
 
 export const AuthAPI = {
   login: async (data: LoginRequest) => {
-    return apiFetch<LoginResponse>(`/authenticate/auth/login`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const response = await authApi.post<ApiResponse<LoginResponse>>('/auth/login', data);
+    return response.data;
   },
+  
   register: async (data: RegisterRequest) => {
-    return apiFetch<unknown>(`/authenticate/users/register`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const response = await authApi.post<ApiResponse<unknown>>('/users/register', data);
+    return response.data;
   },
+  
   sendVerification: async (email: string) => {
-    return apiFetch<unknown>(`/authenticate/auth/send-email-verification`, {
-      method: "POST",
-      body: JSON.stringify({ email }),
-    });
+    const response = await authApi.post<ApiResponse<unknown>>('/auth/send-email-verification', { email });
+    return response.data;
   },
+  
   verifyEmail: async (data: VerifyEmailRequest) => {
-    return apiFetch<unknown>(`/authenticate/auth/verify-email`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const response = await authApi.post<ApiResponse<unknown>>('/auth/verify-email', data);
+    return response.data;
   },
+  
   introspect: async (token: string) => {
     // For introspect, we send the token in the body, not in Authorization header
-    // So we make a direct fetch call instead of using apiFetch
-    const res = await fetch(`${API_BASE_URL}/authenticate/auth/introspect`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
-    return (await res.json()) as ApiResponse<IntrospectResponse>;
+    // So we make a direct call without the default Authorization header
+    const response = await authApi.post<ApiResponse<IntrospectResponse>>(
+      '/auth/introspect',
+      { token },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // This will override the Authorization header from interceptor for this specific request
+        transformRequest: [(data) => JSON.stringify(data)]
+      }
+    );
+    return response.data;
   },
+  
   completeProfile: async (data: ProfileCompletionRequest) => {
-    return apiFetch<unknown>(`/authenticate/users/complete-profile`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const response = await authApi.post<ApiResponse<unknown>>('/users/complete-profile', data);
+    return response.data;
   },
+  
   getProfileStatus: async () => {
     try {
       const result = await profileService.getProfileCompletionStatus();
@@ -61,38 +62,39 @@ export const AuthAPI = {
       throw error;
     }
   },
+  
   resendEmailVerificationOTP: async (email: string) => {
-    return apiFetch<unknown>(`/authenticate/auth/resend-email-verification?email=${encodeURIComponent(email)}`, {
-      method: "POST",
-    });
+    const response = await authApi.post<ApiResponse<unknown>>(`/auth/resend-email-verification?email=${encodeURIComponent(email)}`);
+    return response.data;
   },
 
   resendPasswordResetOTP: async (email: string) => {
-    return apiFetch<unknown>(`/authenticate/auth/resend-password-reset?email=${encodeURIComponent(email)}`, {
-      method: "POST",
-    });
+    const response = await authApi.post<ApiResponse<unknown>>(`/auth/resend-password-reset?email=${encodeURIComponent(email)}`);
+    return response.data;
   },
 
   sendPasswordResetOTP: async (email: string) => {
-    return apiFetch<unknown>(`/authenticate/auth/send-password-reset?email=${encodeURIComponent(email)}`, {
-      method: "POST",
-    });
+    const response = await authApi.post<ApiResponse<unknown>>(`/auth/send-password-reset?email=${encodeURIComponent(email)}`);
+    return response.data;
   },
+  
   logout: async (token: string) => {
     // For logout, we don't need Authorization header since token is in body
-    const res = await fetch(`${API_BASE_URL}/authenticate/auth/logout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
-    return (await res.json()) as ApiResponse<unknown>;
+    const response = await authApi.post<ApiResponse<unknown>>(
+      '/auth/logout',
+      { token },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    return response.data;
   },
+  
   getMe: async () => {
-    return apiFetch<unknown>(`/authenticate/users/me`, {
-      method: "GET",
-    });
+    const response = await authApi.get<ApiResponse<unknown>>('/users/me');
+    return response.data;
   },
 
   // Password management functions
@@ -102,51 +104,49 @@ export const AuthAPI = {
       hasNewPassword: !!data.newPassword
     });
     
-    return apiFetch<unknown>(`/authenticate/auth/change-password`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const response = await authApi.post<ApiResponse<unknown>>('/auth/change-password', data);
+    return response.data;
   },
 
   setupPasswordForGoogleUser: async (email: string, newPassword: string) => {
-    // This is now a PRIVATE endpoint, so we use apiFetch (which adds Authorization header)
-    return apiFetch<unknown>(`/authenticate/auth/google/setup-password?email=${encodeURIComponent(email)}&newPassword=${encodeURIComponent(newPassword)}`, {
-      method: "POST",
-    });
+    // This is now a PRIVATE endpoint, so we use authApi (which adds Authorization header)
+    const response = await authApi.post<ApiResponse<unknown>>(
+      `/auth/google/setup-password?email=${encodeURIComponent(email)}&newPassword=${encodeURIComponent(newPassword)}`
+    );
+    return response.data;
   },
 
   resetPassword: async (data: { email: string; otp: string; newPassword: string }) => {
-    return apiFetch<unknown>(`/authenticate/auth/reset-password`, {
-      method: "POST",
-      body: JSON.stringify({
-        email: data.email,
-        otpCode: data.otp,
-        newPassword: data.newPassword
-      }),
+    const response = await authApi.post<ApiResponse<unknown>>('/auth/reset-password', {
+      email: data.email,
+      otpCode: data.otp,
+      newPassword: data.newPassword
     });
+    return response.data;
   },
 
   getPasswordSetupStatus: async (email: string) => {
-    // This is a PUBLIC endpoint, so we don't use apiFetch (which adds Authorization header)
-    const response = await fetch(`${API_BASE_URL}/authenticate/auth/password-setup-status?email=${encodeURIComponent(email)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    // This is a PUBLIC endpoint, so we make a direct axios call without auth
+    const response = await authApi.get<ApiResponse<any>>(
+      `/auth/password-setup-status?email=${encodeURIComponent(email)}`,
+      {
+        // Override the Authorization header for this public endpoint
+        transformRequest: [(data) => data],
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status !== 200) {
       console.error('Get password setup status failed:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText
       });
       throw new Error(`Failed to get password setup status: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data;
+    return response.data;
   },
 };
 

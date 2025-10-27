@@ -104,3 +104,21 @@ export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
 }
+
+// Google Auth DTOs
+export interface GoogleAuthResponse {
+  authenticated: boolean;
+  email?: string;
+  name?: string;
+  givenName?: string;
+  familyName?: string;
+  picture?: string;
+  token?: string;
+  expiryTime?: string;
+}
+
+export interface PasswordSetupRequest {
+  email: string;
+  newPassword: string;
+  confirmPassword: string;
+}

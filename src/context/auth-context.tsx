@@ -15,7 +15,7 @@ type AuthState = {
   loading: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
-  checkProfileStatus: () => Promise<void>;
+  checkProfileStatus: (currentRole: string | null) => Promise<boolean>;
   checkPasswordSetupRequired: () => Promise<void>;
 };
 
@@ -32,10 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [passwordSetupRequired, setPasswordSetupRequired] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
-  const checkProfileStatus = useCallback(async () => {
-    // Prevent multiple simultaneous calls
-    if (loading) return;
-    
+  const checkProfileStatus = useCallback(async (currentRole: string | null) => {
     try {
       console.log('[Auth] Checking profile status...');
       const res = await AuthAPI.getProfileStatus();
@@ -44,33 +41,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.code === 1000 && res.result) {
         console.log('[Auth] Profile status:', res.result.profileCompleted, 'User type:', res.result.userType);
         
-        // Only STUDENT role needs profile completion
-        // GUARDIAN and TEACHER are always considered completed
-        if (res.result.userType === 'STUDENT') {
-          console.log('[Auth] Setting profileCompleted to:', res.result.profileCompleted);
-          setProfileCompleted(res.result.profileCompleted);
-          // Don't override role - use role from JWT (introspect) which is the source of truth
-        } else {
-          console.log('[Auth] Non-student role, setting profileCompleted to true');
-          setProfileCompleted(true); // GUARDIAN/TEACHER don't need profile completion
-          // Don't override role - use role from JWT (introspect) which is the source of truth
+        // If role is null from introspect (Google first login), use userType from profile API
+        if (!currentRole && res.result.userType) {
+          console.log('[Auth] Setting role from userType:', res.result.userType);
+          setRole(res.result.userType);
         }
         
-        // Force re-render by logging current state
-        console.log('[Auth] Current auth state after profile check:', { 
-          profileCompleted: res.result.userType === 'STUDENT' ? res.result.profileCompleted : true,
-          userType: res.result.userType,
-          role: res.result.userType // Use role from profile service
-        });
+        // Only STUDENT role needs profile completion
+        // GUARDIAN and TEACHER are always considered completed
+        const isCompleted = res.result.userType === 'STUDENT' 
+          ? res.result.profileCompleted 
+          : true;
+        
+        console.log('[Auth] Setting profileCompleted to:', isCompleted, 'for userType:', res.result.userType);
+        setProfileCompleted(isCompleted);
+        
+        // Return the completion status for immediate use
+        return isCompleted;
       } else {
         console.log('[Auth] Profile status check failed:', res.message);
-        setProfileCompleted(false); // Default to not completed if check fails
+        setProfileCompleted(false);
+        return false;
       }
     } catch (error) {
       console.error("[Auth] Failed to check profile status:", error);
-      setProfileCompleted(false); // Default to not completed if check fails
+      setProfileCompleted(false);
+      return false;
     }
-  }, [loading]);
+  }, []);
 
   const checkPasswordSetupRequired = useCallback(async () => {
     try {
@@ -105,27 +103,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.code === 1000 && res.result?.valid) {
         console.log('[Auth] Token is valid, setting user info...');
         console.log('[Auth] Introspect result:', res.result);
-        setId(res.result.id ?? null);
-        setEmail(res.result.email ?? null);
-        setUsername(res.result.email ?? null); // Use email as username for now
-        console.log('[Auth] Setting role to:', res.result.role);
-        setRole(res.result.role ?? null);
         
-        // Save the role from introspect to prevent it from being overridden
-        const introspectRole = res.result.role;
+        const userId = res.result.id ?? null;
+        const userEmail = res.result.email ?? null;
+        const userRole = res.result.role ?? null;
         
-        // Always check profile status after successful introspect for new Google users
-        await checkProfileStatus();
+        setId(userId);
+        setEmail(userEmail);
+        setUsername(userEmail); // Use email as username for now
+        setRole(userRole);
         
-        // Re-apply role from introspect if it was set
-        // This ensures role from JWT token takes precedence over profile service
-        if (introspectRole && introspectRole !== role) {
-          console.log('[Auth] Restoring role from introspect:', introspectRole);
-          setRole(introspectRole);
-        }
+        console.log('[Auth] Role from introspect:', userRole);
+        
+        // Check profile status and wait for the result
+        // Pass current role to checkProfileStatus so it can set role from userType if needed
+        const isProfileCompleted = await checkProfileStatus(userRole);
+        
+        console.log('[Auth] Profile completed status:', isProfileCompleted);
+        console.log('[Auth] If role was null, it should now be set from userType');
         
         // Check password setup status for Google users
         await checkPasswordSetupRequired();
+        
+        // Force a small delay to ensure all state updates are processed
+        // This helps with race conditions in React state updates
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
       } else {
         console.log('[Auth] Token is invalid, cleaning up...');
         // invalid token -> cleanup
@@ -148,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole(null);
       setProfileCompleted(true);
     }
-  }, [checkProfileStatus]);
+  }, [checkProfileStatus, checkPasswordSetupRequired]);
 
   useEffect(() => {
     // Check for token in URL parameters first (for OAuth callback)
@@ -186,8 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("authToken", jwt);
     setToken(jwt);
     await performIntrospect(jwt);
-    await checkProfileStatus();
-  }, [performIntrospect, checkProfileStatus]);
+    // No need to call checkProfileStatus again, it's already called in performIntrospect
+  }, [performIntrospect]);
 
   const logout = useCallback(async () => {
     try {

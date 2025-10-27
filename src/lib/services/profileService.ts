@@ -1,4 +1,5 @@
 import { profileApi } from './axios';
+import { ApiResponse } from '@/lib/dto/common';
 import { 
   StudentProfileRequest, 
   StudentProfileResponse, 
@@ -9,13 +10,6 @@ import {
   GuardianProfileWithStudents, 
   StudentGuardianResponse 
 } from '../dto/guardian';
-
-// Define ApiResponse locally
-interface ApiResponse<T> {
-  code: number;
-  message: string;
-  result: T | null;
-}
 
 class ProfileService {
   /**

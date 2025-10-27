@@ -25,7 +25,7 @@ import {
 import { authService } from '@/lib/services/auth.service';
 import { profileService, mindmapService, classroomService } from '@/lib/services';
 import { UserResponse, StudentProfileResponse, MindmapResponse, ClassroomResponse, Assignment } from '@/lib/dto';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth-utils';
 import { useAuth } from '@/context/auth-context';
 import { Shield } from "lucide-react";
 

@@ -1,37 +1,8 @@
 // Service để gọi API địa chỉ trực tiếp từ third-party
+import { Province, District, Ward, AddressApiResponse } from '@/lib/dto/address';
+
 const API_BASE_URL = 'https://tinhthanhpho.com/api/v1';
 const API_KEY = 'hvn_MKPhhlMk6P7QLdEhiTUqEj0aSfxxuLDL'; // API key từ Backend config
-
-interface Province {
-  code: string;
-  name: string;
-  type: string;
-}
-
-interface District {
-  code: string;
-  name: string;
-  type: string;
-  province_code: string;
-}
-
-interface Ward {
-  code: string;
-  name: string;
-  type: string;
-  district_code: string;
-  province_code: string;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  metadata?: {
-    total: number;
-    page: number;
-    limit: number;
-  };
-}
 
 class AddressService {
   private async makeRequest<T>(endpoint: string): Promise<T> {
@@ -48,7 +19,7 @@ class AddressService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: ApiResponse<T> = await response.json();
+      const data: AddressApiResponse<T> = await response.json();
       
       if (!data.success) {
         throw new Error('API returned unsuccessful response');
