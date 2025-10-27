@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Brain, Plus, Search, Star, Calendar, Eye, Edit, Trash2, Download, Share } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { mindmapService } from "@/lib/services/mindmapService";
+import MindmapCreateForm from "@/components/mindmap/MindmapCreateForm";
+import MindmapEditor from "@/components/mindmap/MindmapEditor";
 
 // Mock data for mindmaps
 const mindmapTemplates = [
@@ -86,6 +89,11 @@ export default function MindMapPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [brainIcons, setBrainIcons] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
 
+  const [userMindmaps, setUserMindmaps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingMindmap, setEditingMindmap] = useState<any>(null);
+
   useEffect(() => {
     // Generate brain icons positions on client side only to avoid hydration mismatch
     const generatedIcons = new Array(8).fill(null).map(() => ({
@@ -95,7 +103,36 @@ export default function MindMapPage() {
       animationDuration: `${5 + Math.random() * 3}s`
     }));
     setBrainIcons(generatedIcons);
+    
+    // Fetch user mindmaps
+    loadMindmaps();
   }, []);
+
+  const loadMindmaps = async () => {
+    try {
+      setLoading(true);
+      const mindmaps = await mindmapService.getUserMindmaps();
+      setUserMindmaps(mindmaps);
+    } catch (error) {
+      console.error('Failed to load mindmaps:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateSuccess = (mindmap: any) => {
+    setUserMindmaps(prev => [mindmap, ...prev]);
+    setShowCreateForm(false);
+    setEditingMindmap(mindmap);
+  };
+
+  const handleEditMindmap = (mindmap: any) => {
+    setEditingMindmap(mindmap);
+  };
+
+  const handleCloseEditor = () => {
+    setEditingMindmap(null);
+  };
 
   const categories = ["all", "Đại số", "Hình học", "Lượng giác", "Cá nhân"];
 
@@ -105,7 +142,9 @@ export default function MindMapPage() {
   );
 
   const filteredUserMindmaps = userMindmaps.filter(mindmap =>
+    mindmap && 
     (selectedCategory === "all" || selectedCategory === "Cá nhân") &&
+    mindmap.title && 
     mindmap.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -183,12 +222,13 @@ export default function MindMapPage() {
             ))}
           </div>
           
-          <Link href="/mindmap/editor">
-            <Button className="rounded-xl bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white shadow-lg shadow-pink-500/30 transition-all duration-300 hover:scale-105">
-              <Plus className="size-4 mr-2" />
-              Tạo mới
-            </Button>
-          </Link>
+          <Button 
+            onClick={() => setShowCreateForm(true)}
+            className="rounded-xl bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white shadow-lg shadow-pink-500/30 transition-all duration-300 hover:scale-105"
+          >
+            <Plus className="size-4 mr-2" />
+            Tạo mới
+          </Button>
         </div>
 
         {/* Templates Section */}
@@ -273,19 +313,19 @@ export default function MindMapPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredUserMindmaps.map((mindmap) => (
                 <Card key={mindmap.id} className="bg-black/40 backdrop-blur-xl border border-pink-500/30 rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-pink-500/20 transition-all duration-300 hover:scale-105 overflow-hidden group">
-                  <div className={`h-2 bg-gradient-to-r ${mindmap.color}`}></div>
+                  <div className={`h-2 bg-gradient-to-r ${mindmap.color || 'from-pink-500 to-violet-500'}`}></div>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg font-bold text-white mb-1 group-hover:text-pink-200 transition-colors">
-                          {mindmap.title}
+                          {mindmap.title || 'Untitled'}
                         </CardTitle>
                         <CardDescription className="text-pink-200/70 text-sm">
-                          {mindmap.description}
+                          {mindmap.description || 'No description'}
                         </CardDescription>
                       </div>
                       <Badge className="bg-pink-500/20 text-pink-300 border-pink-400/30 text-xs">
-                        Lớp {mindmap.grade}
+                        Lớp {mindmap.grade || 'N/A'}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -294,21 +334,23 @@ export default function MindMapPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2 text-pink-200/70 text-sm">
                         <Brain className="size-4" />
-                        {mindmap.nodes} nodes
+                        {mindmap.nodes || 0} nodes
                       </div>
                       <div className="flex items-center gap-2 text-pink-200/70 text-sm">
                         <Calendar className="size-4" />
-                        {mindmap.lastModified}
+                        {mindmap.lastModified || 'Unknown'}
                       </div>
                     </div>
                     
                     <div className="flex gap-2">
-                      <Link href={`/mindmap/editor?id=${mindmap.id}`} className="flex-1">
-                        <Button size="sm" className="w-full bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-lg">
-                          <Edit className="size-4 mr-1" />
-                          Chỉnh sửa
-                        </Button>
-                      </Link>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleEditMindmap(mindmap)}
+                        className="flex-1 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-lg"
+                      >
+                        <Edit className="size-4 mr-1" />
+                        Chỉnh sửa
+                      </Button>
                       <Button size="sm" variant="outline" className="bg-black/30 border-pink-400/30 text-pink-200 hover:bg-pink-500/20 rounded-lg">
                         <Share className="size-4" />
                       </Button>
@@ -326,17 +368,42 @@ export default function MindMapPage() {
                 <Brain className="size-16 text-pink-400/50 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-white mb-2">Chưa có mindmap nào</h3>
                 <p className="text-pink-200/60 mb-6">Tạo mindmap đầu tiên của bạn ngay bây giờ!</p>
-                <Link href="/mindmap/editor">
-                  <Button className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-xl">
-                    <Plus className="size-4 mr-2" />
-                    Tạo mindmap mới
-                  </Button>
-                </Link>
+                <Button 
+                  onClick={() => setShowCreateForm(true)}
+                  className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-xl"
+                >
+                  <Plus className="size-4 mr-2" />
+                  Tạo mindmap mới
+                </Button>
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* Create Form Modal */}
+      {showCreateForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <MindmapCreateForm
+              onSuccess={handleCreateSuccess}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mindmap Editor Modal */}
+      {editingMindmap && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full h-[90vh] max-w-6xl">
+            <MindmapEditor
+              mindmap={editingMindmap}
+              onClose={handleCloseEditor}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

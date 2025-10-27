@@ -7,7 +7,7 @@ class MindmapService {
    */
   async getUserMindmaps(): Promise<MindmapResponse[]> {
     try {
-      const response = await mindmapApi.get<ApiResponse<MindmapResponse[]>>('/mindmap/user');
+      const response = await mindmapApi.get<ApiResponse<MindmapResponse[]>>('/mindmap');
       return response.data.result || [];
     } catch (error: any) {
       console.error('Error fetching user mindmaps:', error);
@@ -29,6 +29,61 @@ class MindmapService {
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Tạo mindmap thất bại');
+    }
+  }
+
+  /**
+   * Tạo mindmap với AI (RAG)
+   */
+  async generateMindmapWithAi(data: {
+    topic: string;
+    description?: string;
+    grade: string;
+    subject: string;
+    aiProvider: 'MISTRAL' | 'GEMINI';
+    aiModel?: string;
+  }): Promise<any> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<any>>('/mindmap/generate', data);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Tạo mindmap với AI thất bại');
+    }
+  }
+
+  /**
+   * Lấy mindmap theo ID
+   */
+  async getMindmapById(id: number): Promise<MindmapResponse> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<MindmapResponse>>(`/mindmap/${id}`);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lấy mindmap thất bại');
+    }
+  }
+
+  /**
+   * Xóa mindmap
+   */
+  async deleteMindmap(id: number): Promise<void> {
+    try {
+      await mindmapApi.delete(`/mindmap/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Xóa mindmap thất bại');
+    }
+  }
+
+  /**
+   * Tìm kiếm mindmaps
+   */
+  async searchMindmaps(keyword: string): Promise<MindmapResponse[]> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<MindmapResponse[]>>(`/mindmap/search?keyword=${encodeURIComponent(keyword)}`);
+      return response.data.result || [];
+    } catch (error: any) {
+      console.error('Error searching mindmaps:', error);
+      return [];
     }
   }
 }
