@@ -294,9 +294,22 @@ export default function ProfileCompletePage() {
       alert('Profile đã được cập nhật thành công!');
       
       router.push('/profile');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing profile:', error);
-      alert('Có lỗi xảy ra khi cập nhật profile. Vui lòng thử lại.');
+      
+      // Check if error message contains authentication information
+      const errorMessage = error?.message || '';
+      
+      if (errorMessage.includes('Phiên đăng nhập') || errorMessage.includes('Unauthorized')) {
+        alert('Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.');
+        // Redirect to login page
+        router.push('/auth/login');
+      } else if (errorMessage.includes('Unauthenticated')) {
+        alert('Bạn cần đăng nhập để cập nhật profile. Vui lòng đăng nhập lại.');
+        router.push('/auth/login');
+      } else {
+        alert(`Có lỗi xảy ra khi cập nhật profile: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

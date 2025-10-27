@@ -50,6 +50,21 @@ class ProfileService {
       const response = await profileApi.put<ApiResponse<StudentProfileResponse>>('/me', profileData);
       return response.data.result!;
     } catch (error: any) {
+      // Log detailed error information
+      console.error('[ProfileService] Update profile error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.response?.data?.message,
+        data: error.response?.data
+      });
+      
+      // Handle 401 Unauthorized specifically
+      if (error.response?.status === 401) {
+        const errorMessage = error.response?.data?.message || 'Phiên đăng nhập đã hết hạn';
+        console.error('[ProfileService] Unauthorized - token may be expired or invalid');
+        throw new Error(`${errorMessage}. Vui lòng đăng nhập lại.`);
+      }
+      
       throw new Error(error.response?.data?.message || 'Cập nhật profile thất bại');
     }
   }

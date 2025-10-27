@@ -135,6 +135,16 @@ export const gatewayApi = axios.create({
         const token = localStorage.getItem('authToken');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+          console.log('[Axios] Request interceptor - token added:', {
+            url: config.url,
+            method: config.method,
+            tokenPreview: `${token.substring(0, 20)}...`
+          });
+        } else {
+          console.warn('[Axios] Request interceptor - no token found:', {
+            url: config.url,
+            method: config.method
+          });
         }
       }
       return config;
@@ -151,7 +161,15 @@ export const gatewayApi = axios.create({
     },
     (error) => {
       if (error.response?.status === 401) {
-        console.log('[Axios] 401 Unauthorized - not clearing token immediately');
+        const token = typeof globalThis.window !== 'undefined' ? localStorage.getItem('authToken') : null;
+        console.error('[Axios] 401 Unauthorized error:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          hasToken: !!token,
+          tokenPreview: token ? `${token.substring(0, 20)}...` : null,
+          errorMessage: error.response?.data?.message,
+          responseData: error.response?.data
+        });
         // Don't clear token immediately - let the calling code decide
         // localStorage.removeItem('authToken');
         // localStorage.removeItem('access_token');

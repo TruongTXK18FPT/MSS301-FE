@@ -49,19 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.result.userType === 'STUDENT') {
           console.log('[Auth] Setting profileCompleted to:', res.result.profileCompleted);
           setProfileCompleted(res.result.profileCompleted);
-          // Set role from profile service if not set from introspect
-          if (!role) {
-            console.log('[Auth] Setting role from profile service:', res.result.userType);
-            setRole(res.result.userType);
-          }
+          // Don't override role - use role from JWT (introspect) which is the source of truth
         } else {
           console.log('[Auth] Non-student role, setting profileCompleted to true');
           setProfileCompleted(true); // GUARDIAN/TEACHER don't need profile completion
-          // Set role from profile service if not set from introspect
-          if (!role) {
-            console.log('[Auth] Setting role from profile service:', res.result.userType);
-            setRole(res.result.userType);
-          }
+          // Don't override role - use role from JWT (introspect) which is the source of truth
         }
         
         // Force re-render by logging current state
@@ -119,8 +111,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Setting role to:', res.result.role);
         setRole(res.result.role ?? null);
         
+        // Save the role from introspect to prevent it from being overridden
+        const introspectRole = res.result.role;
+        
         // Always check profile status after successful introspect for new Google users
         await checkProfileStatus();
+        
+        // Re-apply role from introspect if it was set
+        // This ensures role from JWT token takes precedence over profile service
+        if (introspectRole && introspectRole !== role) {
+          console.log('[Auth] Restoring role from introspect:', introspectRole);
+          setRole(introspectRole);
+        }
         
         // Check password setup status for Google users
         await checkPasswordSetupRequired();
