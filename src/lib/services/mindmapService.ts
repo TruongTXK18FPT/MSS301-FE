@@ -110,20 +110,41 @@ class MindmapService {
   }
 
   /**
-   * Cập nhật mindmap
+   * Cập nhật mindmap (chỉ metadata)
    */
   async updateMindmap(id: number, data: {
     title?: string;
     description?: string;
     visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASSROOM';
-    nodes?: any[];
-    edges?: any[];
   }): Promise<MindmapResponse> {
     try {
       const response = await mindmapApi.put<ApiResponse<MindmapResponse>>(`/${id}`, data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Cập nhật mindmap thất bại');
+    }
+  }
+
+  /**
+   * Cập nhật mindmap với nodes và edges
+   */
+  async updateMindmapWithNodes(id: number, data: {
+    title: string;
+    description?: string;
+    grade: string;
+    subject: string;
+    visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASSROOM';
+    nodes: any[];
+    edges: any[];
+  }): Promise<MindmapResponse> {
+    try {
+      console.log('[MindmapService] Updating mindmap with nodes:', { id, nodesCount: data.nodes.length, edgesCount: data.edges.length });
+      const response = await mindmapApi.put<ApiResponse<MindmapResponse>>(`/${id}/nodes`, data);
+      console.log('[MindmapService] Update response:', response.data);
+      return response.data.result!;
+    } catch (error: any) {
+      console.error('[MindmapService] Update error:', error);
+      throw new Error(error.response?.data?.message || 'Cập nhật mindmap với nodes thất bại');
     }
   }
 

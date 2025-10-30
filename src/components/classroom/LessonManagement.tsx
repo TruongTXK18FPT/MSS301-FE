@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import MathTextInput from './MathTextInput';
+import LatexPreview from './LatexPreview';
 import {
   Dialog,
   DialogContent,
@@ -495,16 +497,17 @@ export default function LessonManagement({ classroomId, isTeacher }: LessonManag
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nội dung bài giảng *</label>
-              <Textarea
+              <MathTextInput
+                label="Nội dung bài giảng *"
                 value={lessonForm.content}
-                onChange={(e) => setLessonForm({ ...lessonForm, content: e.target.value })}
-                placeholder="Nhập nội dung bài giảng (hỗ trợ Markdown)"
+                onChange={(content) => setLessonForm({ ...lessonForm, content })}
+                placeholder="Nhập nội dung bài giảng (hỗ trợ $công thức toán$, $$công thức block$$, và ![hình ảnh])"
                 rows={12}
-                className="font-mono text-sm"
+                allowImage={true}
+                folder="lesson-content"
               />
               <p className="text-xs text-muted-foreground">
-                Hỗ trợ Markdown: # Tiêu đề, **đậm**, *nghiêng*, [link](url), v.v.
+                Hỗ trợ LaTeX: $x^2$, $$\int$$, Markdown và hình ảnh
               </p>
             </div>
 

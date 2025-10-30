@@ -26,6 +26,7 @@ import {
   Plus, Search, Eye, Edit, Trash2, Copy,
   Clock, FileQuestion, CheckCircle, Play, BarChart
 } from 'lucide-react';
+import QuizBuilder from './QuizBuilder';
 
 interface QuizManagementProps {
   classroomId: number;
@@ -83,7 +84,7 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
   });
 
   // Question Builder Dialog
-  const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
+  const [questionBuilderOpen, setQuestionBuilderOpen] = useState(false);
   const [currentQuizId, setCurrentQuizId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
 
@@ -244,8 +245,8 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
   };
 
   const handleManageQuestions = (quizId: number) => {
-    // Navigate to quiz detail page where questions can be managed
-    router.push(`/classroom/${classroomId}/quiz/${quizId}`);
+    setCurrentQuizId(quizId);
+    setQuestionBuilderOpen(true);
   };
 
   const handleDuplicateQuiz = async (quiz: Quiz) => {
@@ -426,7 +427,7 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
                             onClick={() => handleManageQuestions(quiz.id)}
                             title="Quản lý câu hỏi"
                           >
-                            <Edit className="w-4 h-4" />
+                            <FileQuestion className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="outline"
@@ -571,19 +572,21 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
         </DialogContent>
       </Dialog>
 
-      {/* Question Builder Dialog - Placeholder */}
-      <Dialog open={questionDialogOpen} onOpenChange={setQuestionDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Quản lý câu hỏi</DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">
-              Tính năng quản lý câu hỏi sẽ được phát triển ở bước tiếp theo
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Quiz Builder - Modern Question Management */}
+      {questionBuilderOpen && currentQuizId && (
+        <QuizBuilder
+          quizId={currentQuizId}
+          onClose={() => {
+            setQuestionBuilderOpen(false);
+            setCurrentQuizId(null);
+          }}
+          onSave={() => {
+            setQuestionBuilderOpen(false);
+            setCurrentQuizId(null);
+            loadQuizzes(); // Reload to update question counts
+          }}
+        />
+      )}
     </div>
   );
 }

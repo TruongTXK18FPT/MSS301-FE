@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import MathTextInput from './MathTextInput';
+import LatexPreview from './LatexPreview';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,8 @@ import {
   FileText, Clock, Calendar, CheckCircle, AlertCircle,
   Upload, Users, BarChart
 } from 'lucide-react';
+import FileUpload from './FileUpload';
+import { MediaResponse } from '@/lib/services/media.service';
 
 interface AssignmentManagementProps {
   classroomId: number;
@@ -41,7 +45,7 @@ interface Assignment {
   submissionType: 'TEXT' | 'FILE' | 'BOTH';
   dueDate: string;
   totalPoints: number;
-  attachmentFileIds?: string[];
+  attachmentFiles?: MediaResponse[];  // Changed from attachmentFileIds
   status: 'draft' | 'published' | 'closed';
   createdAt: string;
   submissionCount?: number;
@@ -66,7 +70,7 @@ export default function AssignmentManagement({ classroomId, isTeacher }: Assignm
     submissionType: 'BOTH' as 'TEXT' | 'FILE' | 'BOTH',
     dueDate: '',
     totalPoints: 10,
-    attachmentFileIds: [] as string[],
+    attachmentFiles: [] as MediaResponse[],
   });
 
   useEffect(() => {
@@ -143,7 +147,7 @@ export default function AssignmentManagement({ classroomId, isTeacher }: Assignm
       submissionType: 'BOTH',
       dueDate: '',
       totalPoints: 10,
-      attachmentFileIds: [],
+      attachmentFiles: [],
     });
     setDialogOpen(true);
   };
@@ -157,7 +161,7 @@ export default function AssignmentManagement({ classroomId, isTeacher }: Assignm
       submissionType: assignment.submissionType,
       dueDate: assignment.dueDate,
       totalPoints: assignment.totalPoints,
-      attachmentFileIds: assignment.attachmentFileIds || [],
+      attachmentFiles: assignment.attachmentFiles || [],
     });
     setDialogOpen(true);
   };
@@ -173,7 +177,7 @@ export default function AssignmentManagement({ classroomId, isTeacher }: Assignm
           submissionType: assignmentForm.submissionType,
           dueDate: assignmentForm.dueDate,
           totalPoints: assignmentForm.totalPoints,
-          attachmentFileIds: assignmentForm.attachmentFileIds,
+          attachmentFiles: assignmentForm.attachmentFiles,
         }),
         classroomId: classroomId,
         isPublic: false,
@@ -472,13 +476,18 @@ export default function AssignmentManagement({ classroomId, isTeacher }: Assignm
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Hướng dẫn chi tiết *</label>
-              <Textarea
+              <MathTextInput
+                label="Hướng dẫn chi tiết *"
                 value={assignmentForm.instructions}
-                onChange={(e) => setAssignmentForm({ ...assignmentForm, instructions: e.target.value })}
-                placeholder="Nhập hướng dẫn chi tiết cho học sinh"
+                onChange={(instructions) => setAssignmentForm({ ...assignmentForm, instructions })}
+                placeholder="Nhập hướng dẫn chi tiết (hỗ trợ $công thức toán$, $$công thức block$$, và ![hình ảnh])"
                 rows={6}
+                allowImage={true}
+                folder="assignment-instructions"
               />
+              <p className="text-xs text-muted-foreground">
+                Hỗ trợ LaTeX công thức toán và hình ảnh minh họa
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -524,15 +533,15 @@ export default function AssignmentManagement({ classroomId, isTeacher }: Assignm
 
             <div className="space-y-2">
               <label className="text-sm font-medium">File đính kèm</label>
-              <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Kéo thả file vào đây hoặc click để chọn
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max: 10MB)
-                </p>
-              </div>
+              <FileUpload
+                folder="assignments"
+                maxFiles={5}
+                maxSizeMB={50}
+                initialFiles={assignmentForm.attachmentFiles}
+                onFilesUploaded={(files) => {
+                  setAssignmentForm({ ...assignmentForm, attachmentFiles: files });
+                }}
+              />
             </div>
           </div>
 
