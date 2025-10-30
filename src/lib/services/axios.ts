@@ -14,7 +14,7 @@ const API_PREFIX = '/api/v1';
 const AUTH_SERVICE_PATH = '/authenticate';
 const PROFILE_SERVICE_PATH = '/profile';
 const MINDMAP_SERVICE_PATH = '/mindmap';
-const CLASSROOM_SERVICE_PATH = '/classroom';
+const CLASSROOM_SERVICE_PATH = '/classrooms';
 const DOCUMENT_SERVICE_PATH = '/document';
 const RETRIEVAL_SERVICE_PATH = '/retrieval';
 const RAG_SERVICE_PATH = '/rag';
@@ -94,6 +94,17 @@ export const classroomApi = axios.create({
   },
 });
 
+// Content Service - Match với Gateway route: /api/v1/content (số ít)
+const CONTENT_SERVICE_PATH = '/content';
+
+export const contentApi = axios.create({
+  baseURL: `${GATEWAY_URL}${API_PREFIX}${CONTENT_SERVICE_PATH}`,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 export const documentApi = axios.create({
   baseURL: `${GATEWAY_URL}${API_PREFIX}${DOCUMENT_SERVICE_PATH}`,
   timeout: 30000,
@@ -127,7 +138,7 @@ export const gatewayApi = axios.create({
 });
 
 // Thêm interceptors cho tất cả các instance
-[authApi, profileApi, mindmapApi, classroomApi, documentApi, retrievalApi, ragApi, gatewayApi].forEach(api => {
+[authApi, profileApi, mindmapApi, classroomApi, contentApi, documentApi, retrievalApi, ragApi, gatewayApi].forEach(api => {
   // Request interceptor
   api.interceptors.request.use(
     (config) => {

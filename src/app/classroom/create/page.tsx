@@ -16,7 +16,10 @@ import {
   EyeOff,
   Users,
   Lock,
-  Globe
+  Globe,
+  RefreshCw,
+  Copy,
+  Check
 } from "lucide-react";
 import { classroomService } from '@/lib/services/classroom.service';
 import { CreateClassroomRequest } from '@/lib/dto/classroom';
@@ -28,14 +31,26 @@ export default function CreateClassroomPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   
   const [formData, setFormData] = useState<CreateClassroomRequest>({
     name: '',
     description: '',
     isPublic: false,
     password: '',
-    maxStudents: 50
+    maxStudents: 50,
+    joinCode: ''
   });
+
+  // Generate random join code
+  const generateJoinCode = () => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    handleInputChange('joinCode', code);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +91,18 @@ export default function CreateClassroomPage() {
       ...prev,
       [field]: value
     }));
+  };
+
+  const copyJoinCode = async () => {
+    if (formData.joinCode) {
+      await navigator.clipboard.writeText(formData.joinCode);
+      setCodeCopied(true);
+      toast({
+        title: "Đã sao chép",
+        description: "Mã tham gia đã được sao chép vào clipboard"
+      });
+      setTimeout(() => setCodeCopied(false), 2000);
+    }
   };
 
   return (
@@ -157,6 +184,47 @@ export default function CreateClassroomPage() {
                     onChange={(e) => handleInputChange('maxStudents', parseInt(e.target.value) || 50)}
                     className="bg-black/40 border-emerald-400/30 text-white rounded-xl backdrop-blur-sm focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-500/20"
                   />
+                </div>
+
+                {/* Mã tham gia (Join Code) */}
+                <div className="space-y-2">
+                  <Label className="text-emerald-200 font-medium flex items-center gap-2">
+                    <Lock className="size-4" />
+                    Mã tham gia lớp học
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type="text"
+                        placeholder="Nhập hoặc tạo mã tham gia"
+                        value={formData.joinCode}
+                        onChange={(e) => handleInputChange('joinCode', e.target.value.toUpperCase())}
+                        maxLength={8}
+                        className="bg-black/40 border-emerald-400/30 text-white rounded-xl backdrop-blur-sm focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-500/20 uppercase font-mono tracking-wider"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={generateJoinCode}
+                      className="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/30 rounded-xl"
+                      title="Tạo mã ngẫu nhiên"
+                    >
+                      <RefreshCw className="size-4" />
+                    </Button>
+                    {formData.joinCode && (
+                      <Button
+                        type="button"
+                        onClick={copyJoinCode}
+                        className="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/30 rounded-xl"
+                        title="Sao chép mã"
+                      >
+                        {codeCopied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-emerald-200/60 text-sm">
+                    Học sinh sẽ sử dụng mã này để tham gia lớp học. Mã có thể từ 4-8 ký tự.
+                  </p>
                 </div>
 
                 {/* Công khai/Riêng tư */}

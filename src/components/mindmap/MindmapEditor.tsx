@@ -105,13 +105,8 @@ const convertBackendNode = (backendNode: any): MindmapNode => {
 export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Readonly<MindmapEditorProps>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Convert nodes from backend format
-  const initialNodes = mindmap.nodes && mindmap.nodes.length > 0
-    ? mindmap.nodes.map(convertBackendNode)
-    : [];
-    
-  const [nodes, setNodes] = useState<MindmapNode[]>(initialNodes);
-  const [edges, setEdges] = useState<MindmapEdge[]>(mindmap.edges || []);
+  const [nodes, setNodes] = useState<MindmapNode[]>([]);
+  const [edges, setEdges] = useState<MindmapEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -127,6 +122,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
   const [showNodeDetails, setShowNodeDetails] = useState(false);
   const [detailsNode, setDetailsNode] = useState<MindmapNode | null>(null);
   const [showExerciseGenerator, setShowExerciseGenerator] = useState(false);
+  const [isLoadingNodes, setIsLoadingNodes] = useState(true);
 
   // Galaxy theme colors
   const nodeTypeColors = {
@@ -136,9 +132,54 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
     exercise: '#EC4899', // Pink
   };
 
-  // Khởi tạo mindmap mẫu nếu chưa có nodes
+  // Load nodes từ backend khi component mount
   useEffect(() => {
-    if (nodes.length === 0) {
+    loadNodesFromBackend();
+  }, [mindmap.id]);
+
+  const loadNodesFromBackend = async () => {
+    try {
+      setIsLoadingNodes(true);
+      console.log('[MindmapEditor] Loading nodes for mindmap:', mindmap.id);
+      
+      // Load nodes từ backend
+      const backendNodes = await mindmapService.getMindmapNodes(mindmap.id);
+      console.log('[MindmapEditor] Loaded nodes from backend:', backendNodes);
+      
+      if (backendNodes && backendNodes.length > 0) {
+        // Convert nodes sang format frontend
+        const convertedNodes = backendNodes.map(convertBackendNode);
+        setNodes(convertedNodes);
+        
+        // Tạo edges từ parent-child relationships
+        const newEdges: MindmapEdge[] = [];
+        backendNodes.forEach((node: any) => {
+          if (node.parentNodeId) {
+            newEdges.push({
+              id: `edge_${node.id}`,
+              source: node.parentNodeId.toString(),
+              target: node.id.toString(),
+              color: 'rgba(139, 92, 246, 0.5)'
+            });
+          }
+        });
+        setEdges(newEdges);
+        console.log('[MindmapEditor] Created edges:', newEdges);
+      } else {
+        // Nếu không có nodes, tạo sample nodes
+        console.log('[MindmapEditor] No nodes found, creating sample nodes');
+        createSampleNodes();
+      }
+    } catch (error) {
+      console.error('[MindmapEditor] Error loading nodes:', error);
+      // Fallback: tạo sample nodes
+      createSampleNodes();
+    } finally {
+      setIsLoadingNodes(false);
+    }
+  };
+
+  const createSampleNodes = () => {
       const sampleNodes: MindmapNode[] = [
         { 
           id: 'root', 
@@ -197,8 +238,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
         { id: 'edge3', source: 'root', target: 'node3', color: 'rgba(245, 158, 11, 0.5)' },
       ];
       setEdges(sampleEdges);
-    }
-  }, [mindmap.title]);
+  };
 
   // Các function quản lý nodes
   const addNode = (parentId: string) => {
@@ -288,8 +328,9 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
       }));
       
       await mindmapService.updateMindmap(mindmap.id, {
-        nodes: backendNodes,
-        edges: edges
+        title: mindmap.title,
+        description: mindmap.description,
+        visibility: mindmap.visibility
       });
       
       setSaveStatus('success');
@@ -712,15 +753,25 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
       {/* Canvas */}
       <CardContent className="flex-1 p-0 overflow-hidden">
         <div className="relative w-full h-full">
-          <canvas
-            ref={canvasRef}
-            className={`border border-purple-500/30 rounded-lg w-full h-full bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20 ${isEditing ? 'cursor-move' : 'cursor-pointer'}`}
-            onClick={handleCanvasClick}
-            onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
-          />
+          {isLoadingNodes ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mx-auto mb-4"></div>
+                <p className="text-purple-200 text-lg font-semibold">Đang tải mindmap...</p>
+                <p className="text-purple-300 text-sm mt-2">Vui lòng đợi trong giây lát</p>
+              </div>
+            </div>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              className={`border border-purple-500/30 rounded-lg w-full h-full bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20 ${isEditing ? 'cursor-move' : 'cursor-pointer'}`}
+              onClick={handleCanvasClick}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseUp}
+            />
+          )}
         </div>
       </CardContent>
 

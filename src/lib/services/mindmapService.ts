@@ -56,6 +56,10 @@ class MindmapService {
     aiProvider: 'MISTRAL' | 'GEMINI';
     aiModel?: string;
     visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASSROOM';
+    useDocuments?: boolean;
+    documentId?: number;
+    chapterId?: number;
+    lessonId?: number;
   }): Promise<any> {
     try {
       console.log('[MindmapService] Calling generate mindmap with data:', data);
@@ -89,6 +93,19 @@ class MindmapService {
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy mindmap thất bại');
+    }
+  }
+
+  /**
+   * Lấy tất cả nodes của một mindmap
+   */
+  async getMindmapNodes(id: number): Promise<any[]> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<any[]>>(`/${id}/nodes`);
+      return response.data.result || [];
+    } catch (error: any) {
+      console.error('Error fetching mindmap nodes:', error);
+      throw new Error(error.response?.data?.message || 'Lấy nodes thất bại');
     }
   }
 
@@ -141,7 +158,7 @@ class MindmapService {
    */
   async createExercise(data: ExerciseRequest): Promise<ExerciseResponse> {
     try {
-      const response = await mindmapApi.post<ApiResponse<ExerciseResponse>>('/exercise', data);
+      const response = await mindmapApi.post<ApiResponse<ExerciseResponse>>('/exercises', data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Tạo bài tập thất bại');
@@ -153,7 +170,7 @@ class MindmapService {
    */
   async getExercise(id: number): Promise<ExerciseResponse> {
     try {
-      const response = await mindmapApi.get<ApiResponse<ExerciseResponse>>(`/exercise/${id}`);
+      const response = await mindmapApi.get<ApiResponse<ExerciseResponse>>(`/exercises/${id}`);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy bài tập thất bại');
@@ -165,7 +182,7 @@ class MindmapService {
    */
   async getExercisesByNode(nodeId: number): Promise<ExerciseResponse[]> {
     try {
-      const response = await mindmapApi.get<ApiResponse<ExerciseResponse[]>>(`/exercise/node/${nodeId}`);
+      const response = await mindmapApi.get<ApiResponse<ExerciseResponse[]>>(`/exercises/node/${nodeId}`);
       return response.data.result || [];
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy bài tập thất bại');
@@ -177,7 +194,7 @@ class MindmapService {
    */
   async updateExercise(id: number, data: Partial<ExerciseRequest>): Promise<ExerciseResponse> {
     try {
-      const response = await mindmapApi.put<ApiResponse<ExerciseResponse>>(`/exercise/${id}`, data);
+      const response = await mindmapApi.put<ApiResponse<ExerciseResponse>>(`/exercises/${id}`, data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Cập nhật bài tập thất bại');
@@ -189,7 +206,7 @@ class MindmapService {
    */
   async deleteExercise(id: number): Promise<void> {
     try {
-      await mindmapApi.delete(`/exercise/${id}`);
+      await mindmapApi.delete(`/exercises/${id}`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Xóa bài tập thất bại');
     }
@@ -200,7 +217,7 @@ class MindmapService {
    */
   async generateExercises(data: GenerateExerciseRequest): Promise<ExerciseResponse[]> {
     try {
-      const response = await mindmapApi.post<ApiResponse<ExerciseResponse[]>>('/exercise/generate', data);
+      const response = await mindmapApi.post<ApiResponse<ExerciseResponse[]>>('/exercises/generate', data);
       return response.data.result || [];
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Tạo bài tập với AI thất bại');
@@ -214,7 +231,7 @@ class MindmapService {
    */
   async createFormula(data: FormulaRequest): Promise<FormulaResponse> {
     try {
-      const response = await mindmapApi.post<ApiResponse<FormulaResponse>>('/formula', data);
+      const response = await mindmapApi.post<ApiResponse<FormulaResponse>>('/formulas', data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Tạo công thức thất bại');
@@ -226,7 +243,7 @@ class MindmapService {
    */
   async getFormula(id: number): Promise<FormulaResponse> {
     try {
-      const response = await mindmapApi.get<ApiResponse<FormulaResponse>>(`/formula/${id}`);
+      const response = await mindmapApi.get<ApiResponse<FormulaResponse>>(`/formulas/${id}`);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy công thức thất bại');
@@ -238,7 +255,7 @@ class MindmapService {
    */
   async getFormulasByNode(nodeId: number): Promise<FormulaResponse[]> {
     try {
-      const response = await mindmapApi.get<ApiResponse<FormulaResponse[]>>(`/formula/node/${nodeId}`);
+      const response = await mindmapApi.get<ApiResponse<FormulaResponse[]>>(`/formulas/node/${nodeId}`);
       return response.data.result || [];
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy công thức thất bại');
@@ -250,7 +267,7 @@ class MindmapService {
    */
   async updateFormula(id: number, data: Partial<FormulaRequest>): Promise<FormulaResponse> {
     try {
-      const response = await mindmapApi.put<ApiResponse<FormulaResponse>>(`/formula/${id}`, data);
+      const response = await mindmapApi.put<ApiResponse<FormulaResponse>>(`/formulas/${id}`, data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Cập nhật công thức thất bại');
@@ -262,7 +279,7 @@ class MindmapService {
    */
   async deleteFormula(id: number): Promise<void> {
     try {
-      await mindmapApi.delete(`/formula/${id}`);
+      await mindmapApi.delete(`/formulas/${id}`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Xóa công thức thất bại');
     }
@@ -275,7 +292,7 @@ class MindmapService {
    */
   async createConcept(data: ConceptRequest): Promise<ConceptResponse> {
     try {
-      const response = await mindmapApi.post<ApiResponse<ConceptResponse>>('/concept', data);
+      const response = await mindmapApi.post<ApiResponse<ConceptResponse>>('/concepts', data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Tạo khái niệm thất bại');
@@ -287,7 +304,7 @@ class MindmapService {
    */
   async getConcept(id: number): Promise<ConceptResponse> {
     try {
-      const response = await mindmapApi.get<ApiResponse<ConceptResponse>>(`/concept/${id}`);
+      const response = await mindmapApi.get<ApiResponse<ConceptResponse>>(`/concepts/${id}`);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy khái niệm thất bại');
@@ -299,7 +316,7 @@ class MindmapService {
    */
   async getConceptsByNode(nodeId: number): Promise<ConceptResponse[]> {
     try {
-      const response = await mindmapApi.get<ApiResponse<ConceptResponse[]>>(`/concept/node/${nodeId}`);
+      const response = await mindmapApi.get<ApiResponse<ConceptResponse[]>>(`/concepts/node/${nodeId}`);
       return response.data.result || [];
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Lấy khái niệm thất bại');
@@ -311,7 +328,7 @@ class MindmapService {
    */
   async updateConcept(id: number, data: Partial<ConceptRequest>): Promise<ConceptResponse> {
     try {
-      const response = await mindmapApi.put<ApiResponse<ConceptResponse>>(`/concept/${id}`, data);
+      const response = await mindmapApi.put<ApiResponse<ConceptResponse>>(`/concepts/${id}`, data);
       return response.data.result!;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Cập nhật khái niệm thất bại');
@@ -323,7 +340,7 @@ class MindmapService {
    */
   async deleteConcept(id: number): Promise<void> {
     try {
-      await mindmapApi.delete(`/concept/${id}`);
+      await mindmapApi.delete(`/concepts/${id}`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Xóa khái niệm thất bại');
     }

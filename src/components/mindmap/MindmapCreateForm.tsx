@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Brain, Sparkles, Loader2, CheckCircle, AlertCircle, 
   GraduationCap, BookOpen, Clock, Target, Zap, 
-  Info, Lightbulb, TrendingUp, Eye, Lock, Globe, Users
+  Info, Lightbulb, TrendingUp, Eye, Lock, Globe, Users, Check
 } from "lucide-react";
 import { mindmapService } from "@/lib/services/mindmapService";
 import { useAuth } from "@/context/auth-context";
@@ -67,13 +67,18 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
     aiProvider: 'MISTRAL',
     aiModel: '',
     cognitiveLevel: 'thong-hieu',
-    visibility: 'PRIVATE' as 'PRIVATE' | 'PUBLIC' | 'CLASSROOM'
+    visibility: 'PRIVATE' as 'PRIVATE' | 'PUBLIC' | 'CLASSROOM',
+    useDocuments: false, // false = general knowledge, true = based on documents
+    documentId: '',
+    chapterId: '',
+    lessonId: ''
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
+  const [mindmapType, setMindmapType] = useState<'general' | 'document'>('general');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -89,20 +94,36 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
       return;
     }
 
+    // Validate document fields if using document-based mindmap
+    if (mindmapType === 'document' && !formData.documentId) {
+      setError('Vui lòng nhập ID tài liệu khi chọn tạo theo giáo trình');
+      return;
+    }
+
     setIsGenerating(true);
     setError('');
     setSuccess('');
 
     try {
-      const result = await mindmapService.generateMindmapWithAi({
+      const requestData: any = {
         topic: formData.title,
         description: formData.description,
         grade: formData.grade,
         subject: formData.subject,
         aiProvider: formData.aiProvider as 'MISTRAL',
         aiModel: formData.aiModel || undefined,
-        visibility: formData.visibility
-      });
+        visibility: formData.visibility,
+        useDocuments: formData.useDocuments
+      };
+
+      // Add document fields if using document-based mindmap
+      if (mindmapType === 'document') {
+        requestData.documentId = parseInt(formData.documentId);
+        if (formData.chapterId) requestData.chapterId = parseInt(formData.chapterId);
+        if (formData.lessonId) requestData.lessonId = parseInt(formData.lessonId);
+      }
+
+      const result = await mindmapService.generateMindmapWithAi(requestData);
 
       setSuccess('Tạo mindmap thành công!');
       if (onSuccess) {
@@ -161,7 +182,7 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
             </div>
             <div>
               <h2 className="text-2xl font-bold">Tạo Mindmap Mới</h2>
-              <p className="text-white/80 text-sm">Tạo mindmap với AI hoặc tạo thủ công để bắt đầu học tập</p>
+              <p className="text-white/80 text-sm">Chọn loại mindmap và bắt đầu học tập thông minh</p>
             </div>
           </div>
         </div>
@@ -169,6 +190,109 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
 
       <Card className="border-0 shadow-2xl">
         <CardContent className="p-6">
+          {/* Chọn loại Mindmap */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Chọn loại Mindmap
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* General Knowledge Mindmap */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMindmapType('general');
+                  setFormData(prev => ({ ...prev, useDocuments: false }));
+                }}
+                className={`p-6 rounded-xl border-2 transition-all text-left ${
+                  mindmapType === 'general'
+                    ? 'border-purple-500 bg-purple-50 shadow-lg shadow-purple-200'
+                    : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-md'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`p-3 rounded-lg ${
+                    mindmapType === 'general' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-lg mb-2 flex items-center gap-2">
+                      Kiến thức Tổng quát
+                      {mindmapType === 'general' && (
+                        <Badge className="bg-purple-500">Đang chọn</Badge>
+                      )}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Tạo mindmap dựa trên kiến thức toán học tổng quát từ lớp 1-12 và kiến thức quốc tế
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        Không cần tài liệu
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        15-20+ nodes
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        Đa dạng nguồn
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Document-based Mindmap */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMindmapType('document');
+                  setFormData(prev => ({ ...prev, useDocuments: true }));
+                }}
+                className={`p-6 rounded-xl border-2 transition-all text-left ${
+                  mindmapType === 'document'
+                    ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-200'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-md'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`p-3 rounded-lg ${
+                    mindmapType === 'document' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    <BookOpen className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-lg mb-2 flex items-center gap-2">
+                      Theo Giáo trình
+                      {mindmapType === 'document' && (
+                        <Badge className="bg-blue-500">Đang chọn</Badge>
+                      )}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Tạo mindmap dựa trên tài liệu giáo trình đã upload (sách giáo khoa, bài giảng...)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        Theo SGK
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        10+ nodes
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        Chuẩn MOET
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Tab Navigation */}
             <div className="flex gap-2 border-b">
@@ -305,7 +429,73 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                     </div>
                   </div>
 
-                  {/* Visibility Settings */}
+                  {/* Document Selection - Only show if mindmapType is 'document' */}
+                  {mindmapType === 'document' && (
+                    <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-blue-600" />
+                        Chọn Tài liệu Giáo trình
+                      </h4>
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="documentId" className="text-sm font-medium">
+                            ID Tài liệu
+                          </Label>
+                          <Input
+                            id="documentId"
+                            type="number"
+                            placeholder="Nhập ID tài liệu (document)"
+                            value={formData.documentId}
+                            onChange={(e) => handleInputChange('documentId', e.target.value)}
+                            className="bg-white"
+                          />
+                          <p className="text-xs text-gray-600">
+                            ID của sách giáo khoa hoặc tài liệu đã upload
+                          </p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="chapterId" className="text-sm font-medium">
+                              ID Chương (tùy chọn)
+                            </Label>
+                            <Input
+                              id="chapterId"
+                              type="number"
+                              placeholder="ID chương"
+                              value={formData.chapterId}
+                              onChange={(e) => handleInputChange('chapterId', e.target.value)}
+                              className="bg-white"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="lessonId" className="text-sm font-medium">
+                              ID Bài học (tùy chọn)
+                            </Label>
+                            <Input
+                              id="lessonId"
+                              type="number"
+                              placeholder="ID bài học"
+                              value={formData.lessonId}
+                              onChange={(e) => handleInputChange('lessonId', e.target.value)}
+                              className="bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg">
+                          <Info className="h-4 w-4 text-blue-700 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-blue-800">
+                            <strong>Lưu ý:</strong> Mindmap sẽ được tạo dựa trên nội dung từ tài liệu đã chọn. 
+                            Nếu không nhập Chapter/Lesson ID, mindmap sẽ tổng hợp toàn bộ tài liệu.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Visibility Selector */}
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">
                       <Eye className="inline-block mr-2 h-4 w-4 text-indigo-600" />

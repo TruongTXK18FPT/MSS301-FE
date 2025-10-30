@@ -53,6 +53,16 @@ class ClassroomService {
     }
   }
 
+  async getClassroomById(id: number): Promise<Classroom> {
+    try {
+      const response = await classroomApi.get<ApiResponse<Classroom>>(`/${id}`);
+      return response.data.result || {} as Classroom;
+    } catch (error: any) {
+      console.error('Error fetching classroom:', error);
+      throw error;
+    }
+  }
+
   async updateClassroom(id: number, data: Partial<CreateClassroomRequest>): Promise<Classroom> {
     try {
       const response = await classroomApi.put<ApiResponse<Classroom>>(`/${id}`, data);
@@ -104,7 +114,7 @@ class ClassroomService {
 
   async removeStudent(classroomId: number, studentId: number): Promise<void> {
     try {
-      await classroomApi.delete(`/classrooms/${classroomId}/students/${studentId}`);
+      await classroomApi.delete(`/${classroomId}/students/${studentId}`);
     } catch (error: any) {
       console.error('Error removing student:', error);
       throw error;

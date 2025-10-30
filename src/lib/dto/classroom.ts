@@ -10,6 +10,9 @@ export interface Classroom {
   password?: string;
   maxStudents: number;
   currentStudents: number;
+  assignmentCount?: number;
+  quizCount?: number;
+  contentCount?: number; // For lessons/mindmaps
   createdAt: string;
   updatedAt: string;
 }
@@ -75,6 +78,7 @@ export interface CreateClassroomRequest {
   isPublic: boolean;
   password?: string;
   maxStudents?: number;
+  joinCode?: string;
 }
 
 export interface CreateAssignmentRequest {
