@@ -22,7 +22,7 @@ export interface UploadResponse {
 }
 
 class MediaService {
-  private baseUrl = '/media';
+  private baseUrl = '/api/v1/media';
 
   /**
    * Upload single file to Cloudinary

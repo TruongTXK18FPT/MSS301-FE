@@ -50,7 +50,7 @@ interface MindmapNode {
   level?: number;
   content?: string;
   exercises?: Exercise[];
-  nodeType?: 'concept' | 'formula' | 'example' | 'exercise';
+  nodeType?: 'CONCEPT' | 'FORMULA' | 'EXERCISE';
   backendId?: number;
   parentNodeId?: number;
 }
@@ -97,15 +97,45 @@ const convertBackendNode = (backendNode: any): MindmapNode => {
     size: backendNode.width ? backendNode.width / 2 : 30,
     level: backendNode.level || 0,
     content: backendNode.content || '',
-    nodeType: (backendNode.nodeType?.toLowerCase() || 'concept') as any,
+    nodeType: backendNode.nodeType || 'CONCEPT',
     exercises: [],
     backendId: backendNode.id,
     parentNodeId: backendNode.parentNodeId
   };
 };
 
+// Helper function to adjust color brightness
+const adjustColorBrightness = (color: string, percent: number): string => {
+  if (!color) return '#8B5CF6';
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  const newR = Math.min(255, Math.max(0, r + (r * percent / 100)));
+  const newG = Math.min(255, Math.max(0, g + (g * percent / 100)));
+  const newB = Math.min(255, Math.max(0, b + (b * percent / 100)));
+  
+  return `#${Math.round(newR).toString(16).padStart(2, '0')}${Math.round(newG).toString(16).padStart(2, '0')}${Math.round(newB).toString(16).padStart(2, '0')}`;
+};
+
+// Helper function to get node icon
+const getNodeIcon = (nodeType?: string): string => {
+  switch (nodeType) {
+    case 'formula': return '∑';
+    case 'exercise': return '?';
+    case 'example': return '★';
+    default: return '●';
+  }
+};
+
 // Wrap text in canvas with proper line breaks
-const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+const wrapText = (ctx: CanvasRenderingContext2D, text: string | null, maxWidth: number): string[] => {
+  // Handle null or undefined text
+  if (!text) {
+    return [];
+  }
+
   const words = text.split(' ');
   const lines: string[] = [];
   let currentLine = words[0];
@@ -139,7 +169,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, nodeX: 0, nodeY: 0 });
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [showNodeDetails, setShowNodeDetails] = useState(false);
   const [detailsNode, setDetailsNode] = useState<MindmapNode | null>(null);
@@ -147,17 +177,69 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
   const [isLoadingNodes, setIsLoadingNodes] = useState(true);
 
   // Galaxy theme colors - more vibrant
-  const nodeTypeColors = {
+  const nodeTypeColors: Record<string, string> = {
     concept: '#8B5CF6',     // Purple
     formula: '#06B6D4',     // Cyan
     example: '#F59E0B',     // Amber
     exercise: '#EC4899',    // Pink
+    CONCEPT: '#8B5CF6',     // Purple
+    FORMULA: '#06B6D4',     // Cyan
+    EXERCISE: '#EC4899',    // Pink
   };
 
   // Load nodes from backend when component mounts
   useEffect(() => {
     loadNodesFromBackend();
   }, [mindmap.id]);
+
+  // Center view with 100% zoom when nodes are loaded (first time only)
+  useEffect(() => {
+    if (nodes.length > 0 && canvasRef.current) {
+      // Center with 100% zoom (1.0) when opening mindmap
+      centerView(1.0);
+    }
+  }, [nodes.length]);
+
+  const centerView = (targetZoom: number = 1.0) => {
+    if (nodes.length === 0 || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    
+    // Calculate bounding box of all nodes
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    
+    nodes.forEach(node => {
+      const nodeWidth = (node.size || 40) * 2;
+      const nodeHeight = (node.size || 40) * 1.5;
+      const padding = 50;
+      minX = Math.min(minX, node.x - nodeWidth/2 - padding);
+      maxX = Math.max(maxX, node.x + nodeWidth/2 + padding);
+      minY = Math.min(minY, node.y - nodeHeight/2 - padding);
+      maxY = Math.max(maxY, node.y + nodeHeight/2 + padding);
+    });
+    
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    
+    // Set zoom to targetZoom (default 100% = 1.0)
+    const newZoom = targetZoom;
+    
+    // Center the view - pan should center the content at the target zoom level
+    const newPanX = canvas.width / 2 - (centerX * newZoom);
+    const newPanY = canvas.height / 2 - (centerY * newZoom);
+    
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
+    
+    console.log('[centerView] Adjusted view:', { 
+      nodes: nodes.length, 
+      bounds: { minX, maxX, minY, maxY },
+      zoom: newZoom, 
+      pan: { x: newPanX, y: newPanY },
+      center: { centerX, centerY }
+    });
+  };
 
   const loadNodesFromBackend = async () => {
     try {
@@ -186,16 +268,27 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
           const newEdges: MindmapEdge[] = [];
           backendNodes.forEach((node: any) => {
             if (node.parentNodeId) {
-              newEdges.push({
-                id: `edge_${node.parentNodeId}_${node.id}`,
-                source: node.parentNodeId.toString(),
-                target: node.id.toString(),
-                color: 'rgba(139, 92, 246, 0.5)'
-              });
+              // Find parent node in converted nodes
+              const parentNodeIndex = backendNodes.findIndex((n: any) => n.id === node.parentNodeId);
+              const currentNodeIndex = backendNodes.findIndex((n: any) => n.id === node.id);
+              
+              if (parentNodeIndex >= 0 && currentNodeIndex >= 0) {
+                // Use the frontend node IDs (which were assigned during conversion)
+                const sourceNodeId = convertedNodes[parentNodeIndex].id;
+                const targetNodeId = convertedNodes[currentNodeIndex].id;
+                
+                newEdges.push({
+                  id: `edge_${node.parentNodeId}_${node.id}`,
+                  source: sourceNodeId,  // Use frontend node ID
+                  target: targetNodeId,  // Use frontend node ID
+                  color: 'rgba(139, 92, 246, 0.5)'
+                });
+              }
             }
           });
           setEdges(newEdges);
           console.log('[MindmapEditor] Created edges:', newEdges);
+          console.log('[MindmapEditor] Loaded nodes:', convertedNodes.length, 'edges:', newEdges.length);
           return;
         }
       } catch (error: any) {
@@ -225,7 +318,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
           color: nodeTypeColors.concept,
           size: 65, // Node trung tâm lớn hơn rất nhiều
           level: 0,
-          nodeType: 'concept',
+          nodeType: 'CONCEPT',
           content: mindmap.description || 'Chủ đề chính của mindmap',
           exercises: []
         }
@@ -235,9 +328,12 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
   };
 
   // Add node
-  const addNode = (parentId: string, nodeType: 'concept' | 'formula' | 'example' | 'exercise' = 'concept') => {
+  const addNode = (parentId: string, nodeType: 'CONCEPT' | 'FORMULA' | 'EXERCISE' = 'CONCEPT') => {
     const parentNode = nodes.find(n => n.id === parentId);
-    if (!parentNode) return;
+    if (!parentNode) {
+      console.error('[addNode] Parent node not found:', parentId);
+      return;
+    }
 
     const newNodeId = `node_${Date.now()}`;
     const angle = Math.random() * Math.PI * 2;
@@ -245,30 +341,31 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
 
     const newNode: MindmapNode = {
       id: newNodeId,
-      label: nodeType === 'concept' ? 'Khái niệm mới' :
-             nodeType === 'formula' ? 'Công thức mới' :
-             nodeType === 'example' ? 'Ví dụ mới' : 'Bài tập mới',
+      label: nodeType === 'CONCEPT' ? 'Khái niệm mới' :
+             nodeType === 'FORMULA' ? 'Công thức mới' : 'Bài tập mới',
       x: parentNode.x + Math.cos(angle) * distance,
       y: parentNode.y + Math.sin(angle) * distance,
       color: nodeTypeColors[nodeType],
       size: 32,
       level: (parentNode.level || 0) + 1,
       nodeType: nodeType,
-      content: `Thêm nội dung cho ${nodeType === 'concept' ? 'khái niệm' : nodeType === 'formula' ? 'công thức' : nodeType === 'example' ? 'ví dụ' : 'bài tập'} này`,
+      content: `Thêm nội dung cho ${nodeType === 'CONCEPT' ? 'khái niệm' : nodeType === 'FORMULA' ? 'công thức' : 'bài tập'} này`,
       exercises: [],
-      parentNodeId: parentNode.backendId // Set parent relationship
+      parentNodeId: parentNode.backendId // Set parent relationship for backend
     };
 
     setNodes([...nodes, newNode]);
 
-    // Add edge
+    // Add edge - IMPORTANT: Use frontend node IDs (node.id, not backendId)
     const newEdge: MindmapEdge = {
       id: `edge_${Date.now()}`,
-      source: parentId,
-      target: newNodeId,
-      color: `rgba(${nodeType === 'concept' ? '139, 92, 246' : nodeType === 'formula' ? '6, 182, 212' : nodeType === 'example' ? '245, 158, 11' : '236, 72, 153'}, 0.5)`
+      source: parentNode.id,  // Use frontend ID
+      target: newNodeId,      // Use frontend ID
+      color: `rgba(${nodeType === 'CONCEPT' ? '139, 92, 246' : nodeType === 'FORMULA' ? '6, 182, 212' : '236, 72, 153'}, 0.5)`
     };
     setEdges([...edges, newEdge]);
+    
+    console.log('[addNode] Added node:', newNodeId, 'parent:', parentNode.id, 'edge:', newEdge);
   };
 
   const deleteNode = (nodeId: string) => {
@@ -317,6 +414,14 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
     setIsSaving(true);
     setSaveStatus('idle');
     try {
+      // Validate mindmap ID
+      if (!mindmap.id) {
+        console.error('[MindmapEditor] Cannot save: mindmap.id is undefined');
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+        return;
+      }
+
       console.log('[MindmapEditor] Saving mindmap:', {
         id: mindmap.id,
         nodesCount: nodes.length,
@@ -324,22 +429,50 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
       });
 
       // Convert nodes back to backend format with proper parent relationships
+      // IMPORTANT: Use actual node coordinates (not affected by pan/zoom)
       const backendNodes = nodes.map(node => {
-        // Find parent from edges
+        // Find parent from edges (edges use frontend node IDs)
         const parentEdge = edges.find(e => e.target === node.id);
         const parentNode = parentEdge ? nodes.find(n => n.id === parentEdge.source) : null;
 
+        // Map frontend nodeType to backend NodeType enum
+        const mapNodeType = (frontendType?: string): string => {
+          if (!frontendType) return 'CONCEPT';
+          const upperType = frontendType.toUpperCase();
+          // Map frontend types to backend enum values
+          switch (upperType) {
+            case 'FORMULA':
+            case 'CÔNG THỨC':
+              return 'FORMULA';
+            case 'EXERCISE':
+            case 'BÀI TẬP':
+              return 'EXERCISE';
+            case 'EXAMPLE':
+            case 'VÍ DỤ':
+              return 'EXAMPLE';
+            case 'CONCEPT':
+            case 'KHÁI NIỆM':
+            default:
+              return 'CONCEPT';
+          }
+        };
+
+        // For circular nodes, use diameter as both width and height
+        const nodeSize = node.size || 60; // Match the new base size for circles
+        const diameter = nodeSize * 2;
+
         return {
           id: node.backendId,
-          title: node.label,
+          title: node.label || 'Untitled', // Ensure title is never null/empty
           content: node.content || '',
-          nodeType: node.nodeType?.toUpperCase() || 'CONCEPT',
+          nodeType: mapNodeType(node.nodeType), // Ensure valid enum value
+          // Use actual node coordinates - these are independent of pan/zoom
           positionX: Math.round(node.x),
           positionY: Math.round(node.y),
           backgroundColor: node.color,
           level: node.level || 0,
-          width: (node.size || 30) * 2,
-          height: (node.size || 30) * 2,
+          width: diameter, // Use diameter for circular nodes
+          height: diameter, // Use diameter for circular nodes
           parentNodeId: parentNode?.backendId || null
         };
       });
@@ -385,123 +518,243 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Polyfill for roundRect if not available
+    if (!ctx.roundRect) {
+      (ctx as any).roundRect = function(x: number, y: number, w: number, h: number, r: number) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+      };
+    }
+
     // Set canvas size
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    // Clear canvas with galaxy background
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#0F172A');
-    gradient.addColorStop(0.3, '#1E1B4B');
-    gradient.addColorStop(0.6, '#312E81');
-    gradient.addColorStop(1, '#4C1D95');
-    ctx.fillStyle = gradient;
+    // Clear canvas with black space background
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw animated stars
+    // Draw animated floating stars (like homepage)
     const time = Date.now() * 0.001;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 150; i++) {
       const x = (i * 137.5 % canvas.width);
       const y = (i * 73.2 % canvas.height);
-      const size = (Math.sin(time + i) + 1) * 1.5;
-      const alpha = (Math.sin(time * 0.5 + i) + 1) * 0.5;
+      const size = (Math.sin(time * 0.3 + i) + 1) * 0.8 + 0.5;
+      const alpha = (Math.sin(time * 0.5 + i) + 1) * 0.3 + 0.3; // Range: 0.3-0.9
       ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Draw edges with glow effect
+    // Draw edges with beautiful curves and glow effects
     for (const edge of edges) {
+      // Edge source/target now use frontend node IDs (node.id)
       const sourceNode = nodes.find(n => n.id === edge.source);
       const targetNode = nodes.find(n => n.id === edge.target);
 
       if (sourceNode && targetNode) {
-        const sourceX = sourceNode.x + pan.x;
-        const sourceY = sourceNode.y + pan.y;
-        const targetX = targetNode.x + pan.x;
-        const targetY = targetNode.y + pan.y;
+        // Apply zoom and pan to node positions
+        const sourceX = (sourceNode.x * zoom) + pan.x;
+        const sourceY = (sourceNode.y * zoom) + pan.y;
+        const targetX = (targetNode.x * zoom) + pan.x;
+        const targetY = (targetNode.y * zoom) + pan.y;
 
-        // Draw glow
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = edge.color || 'rgba(139, 92, 246, 0.8)';
+        // Calculate control points for curved edge
+        const dx = targetX - sourceX;
+        const dy = targetY - sourceY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const curvature = Math.min(80 * zoom, distance * 0.3);
+        
+        // Control points for smooth curve
+        const cp1x = sourceX + dx * 0.5 + (dy * curvature) / distance;
+        const cp1y = sourceY + dy * 0.5 - (dx * curvature) / distance;
+        const cp2x = targetX - dx * 0.5 + (dy * curvature) / distance;
+        const cp2y = targetY - dy * 0.5 - (dx * curvature) / distance;
+
+        // Draw edge glow (multiple layers for better effect)
+        ctx.shadowBlur = 20 * zoom;
+        ctx.shadowColor = edge.color || 'rgba(139, 92, 246, 0.6)';
+        
+        // Main edge line with gradient
+        const edgeGradient = ctx.createLinearGradient(sourceX, sourceY, targetX, targetY);
+        edgeGradient.addColorStop(0, edge.color || 'rgba(139, 92, 246, 0.8)');
+        edgeGradient.addColorStop(0.5, edge.color || 'rgba(139, 92, 246, 0.6)');
+        edgeGradient.addColorStop(1, edge.color || 'rgba(139, 92, 246, 0.4)');
+        
         ctx.beginPath();
         ctx.moveTo(sourceX, sourceY);
-        ctx.lineTo(targetX, targetY);
-        ctx.strokeStyle = edge.color || 'rgba(139, 92, 246, 0.5)';
-        ctx.lineWidth = 3;
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, targetX, targetY);
+        ctx.strokeStyle = edgeGradient;
+        ctx.lineWidth = 3 * zoom;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         ctx.stroke();
+        
+        // Reset shadow
         ctx.shadowBlur = 0;
+      } else {
+        console.warn('[drawCanvas] Edge has missing node:', { 
+          edge, 
+          sourceFound: !!sourceNode, 
+          targetFound: !!targetNode,
+          availableNodeIds: nodes.map(n => n.id)
+        });
       }
     }
 
-    // Draw nodes with galaxy effect
+    // Draw nodes with modern design - circular nodes
     for (const node of nodes) {
-      const x = node.x + pan.x;
-      const y = node.y + pan.y;
-      const radius = (node.size || 16) * zoom;
+      const x = (node.x * zoom) + pan.x;
+      const y = (node.y * zoom) + pan.y;
+      const baseSize = node.size || 60; // Increased base size for larger circles
+      const radius = baseSize * zoom; // Use single radius for circles
+      const isSelected = selectedNode === node.id;
+      const nodeColor = node.color || '#8B5CF6';
 
-      // Draw outer glow
-      const outerGlow = ctx.createRadialGradient(x, y, 0, x, y, radius + 20);
-      outerGlow.addColorStop(0, node.color + '80');
-      outerGlow.addColorStop(0.5, node.color + '40');
-      outerGlow.addColorStop(1, node.color + '00');
-      ctx.fillStyle = outerGlow;
+      // Draw outer glow/halo effect - enhanced
+      const glowSize = isSelected ? 35 * zoom : 25 * zoom;
+      const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, radius + glowSize);
+      const glowAlpha = isSelected ? '80' : '50';
+      glowGradient.addColorStop(0, nodeColor + glowAlpha);
+      glowGradient.addColorStop(0.4, nodeColor + '30');
+      glowGradient.addColorStop(0.7, nodeColor + '10');
+      glowGradient.addColorStop(1, nodeColor + '00');
+      ctx.fillStyle = glowGradient;
       ctx.beginPath();
-      ctx.arc(x, y, radius + 20, 0, 2 * Math.PI);
+      ctx.arc(x, y, radius + glowSize, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw node with gradient
-      const nodeGradient = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 0, x, y, radius);
-      nodeGradient.addColorStop(0, node.color + 'FF');
-      nodeGradient.addColorStop(1, node.color + 'CC');
+      // Draw shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 15 * zoom;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 4 * zoom;
+
+      // Draw main node background with enhanced radial gradient
+      const nodeGradient = ctx.createRadialGradient(
+        x - radius * 0.3, y - radius * 0.3, 0,
+        x, y, radius
+      );
+      const lightColor = adjustColorBrightness(nodeColor, 25);
+      const midColor = adjustColorBrightness(nodeColor, 5);
+      const darkColor = adjustColorBrightness(nodeColor, -15);
+      nodeGradient.addColorStop(0, lightColor);
+      nodeGradient.addColorStop(0.5, midColor);
+      nodeGradient.addColorStop(1, darkColor);
+      
       ctx.fillStyle = nodeGradient;
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Draw inner highlight for 3D effect
+      const highlightGradient = ctx.createRadialGradient(
+        x - radius * 0.4, y - radius * 0.4, 0,
+        x - radius * 0.2, y - radius * 0.2, radius * 0.6
+      );
+      highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+      highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = highlightGradient;
+      ctx.beginPath();
+      ctx.arc(x - radius * 0.2, y - radius * 0.2, radius * 0.6, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw border
-      if (selectedNode === node.id) {
+      // Draw border with enhanced styling
+      if (isSelected) {
+        // Outer glow border
         ctx.strokeStyle = '#FBBF24';
-        ctx.lineWidth = 4;
-        ctx.shadowBlur = 10;
+        ctx.lineWidth = 5 * zoom;
+        ctx.shadowBlur = 20 * zoom;
         ctx.shadowColor = '#FBBF24';
       } else {
-        ctx.strokeStyle = '#FFFFFF40';
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 0;
+        // Subtle border with glow
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 2.5 * zoom;
+        ctx.shadowBlur = 8 * zoom;
+        ctx.shadowColor = nodeColor + '60';
       }
       ctx.beginPath();
-      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // Draw label with text wrapping
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = `bold ${Math.max(10, 13 * zoom)}px 'Inter', sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-      ctx.shadowBlur = 6;
+      // Inner border for depth
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 1 * zoom;
+      ctx.beginPath();
+      ctx.arc(x, y, radius - 2, 0, Math.PI * 2);
+      ctx.stroke();
 
-      const maxWidth = radius * 1.8;
+      // Draw icon based on nodeType with background circle
+      const iconSize = 20 * zoom;
+      const iconY = y - radius * 0.4; // Position icon in upper part of circle
+      const iconRadius = iconSize * 0.7;
+      
+      // Icon background circle with glow
+      const iconGradient = ctx.createRadialGradient(x, iconY, 0, x, iconY, iconRadius);
+      iconGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+      iconGradient.addColorStop(1, 'rgba(255, 255, 255, 0.1)');
+      ctx.fillStyle = iconGradient;
+      ctx.beginPath();
+      ctx.arc(x, iconY, iconRadius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Icon text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${iconSize}px 'Segoe UI Symbol', 'Arial', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 3 * zoom;
+      const icon = getNodeIcon(node.nodeType);
+      ctx.fillText(icon, x, iconY);
+      ctx.shadowBlur = 0;
+
+      // Draw label with text wrapping and enhanced typography
+      const fontSize = Math.max(13, 16 * zoom);
+      const maxWidth = radius * 1.6; // Adjust max width for circular layout
       const lines = wrapText(ctx, node.label, maxWidth);
-      const lineHeight = Math.max(12, 15 * zoom);
-      const startY = y - ((lines.length - 1) * lineHeight) / 2;
+      const lineHeight = Math.max(16, 18 * zoom);
+      const totalHeight = lines.length * lineHeight;
+      
+      // Center text in the circle, below the icon
+      const textStartY = y + (iconSize * 0.3);
+
+      // Text shadow for better readability
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 5 * zoom;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${fontSize}px 'Inter', 'Segoe UI', -apple-system, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
 
       lines.forEach((line, index) => {
-        ctx.fillText(line, x, startY + index * lineHeight);
+        const lineY = textStartY + (index - (lines.length - 1) / 2) * lineHeight;
+        ctx.fillText(line, x, lineY);
       });
       ctx.shadowBlur = 0;
 
-      // Draw exercise badge
+      // Draw exercise badge in top-right of circle
       if (node.exercises && node.exercises.length > 0) {
-        const badgeX = x + radius * 0.7;
-        const badgeY = y - radius * 0.7;
-        const badgeRadius = 10 * zoom;
+        const badgeAngle = Math.PI / 4; // 45 degrees (top-right)
+        const badgeDistance = radius * 0.75;
+        const badgeX = x + Math.cos(-badgeAngle) * badgeDistance;
+        const badgeY = y + Math.sin(-badgeAngle) * badgeDistance;
+        const badgeRadius = 12 * zoom;
 
-        // Badge background
+        // Badge background with glow
         ctx.fillStyle = '#EC4899';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 8 * zoom;
         ctx.shadowColor = '#EC4899';
         ctx.beginPath();
         ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI);
@@ -510,24 +763,33 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
 
         // Badge text
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `bold ${Math.max(8, 11 * zoom)}px Arial`;
+        ctx.font = `bold ${Math.max(9, 10 * zoom)}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(node.exercises.length.toString(), badgeX, badgeY + 4 * zoom);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.exercises.length.toString(), badgeX, badgeY);
       }
     }
   }, [nodes, edges, selectedNode, zoom, pan]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Prevent click if we just finished dragging
+    if (isDragging) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / zoom - pan.x;
-    const y = (e.clientY - rect.top) / zoom - pan.y;
+    // Convert screen coordinates to canvas coordinates
+    const canvasX = (e.clientX - rect.left - pan.x) / zoom;
+    const canvasY = (e.clientY - rect.top - pan.y) / zoom;
 
+    // Find clicked node - check if click is within circular node bounds
     const clickedNode = nodes.find(node => {
-      const distance = Math.hypot(node.x - x, node.y - y);
-      return distance <= (node.size || 16);
+      const radius = node.size || 60; // Match the new base size for circles
+      const dx = canvasX - node.x;
+      const dy = canvasY - node.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance <= radius;
     });
 
     if (clickedNode) {
@@ -549,18 +811,30 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / zoom - pan.x;
-    const y = (e.clientY - rect.top) / zoom - pan.y;
+    // Convert screen coordinates to canvas coordinates (accounting for zoom and pan)
+    const canvasX = (e.clientX - rect.left - pan.x) / zoom;
+    const canvasY = (e.clientY - rect.top - pan.y) / zoom;
 
+    // Find clicked node - check if click is within circular node bounds
     const clickedNode = nodes.find(node => {
-      const distance = Math.hypot(node.x - x, node.y - y);
-      return distance <= (node.size || 16);
+      const radius = node.size || 60; // Match the new base size for circles
+      const dx = canvasX - node.x;
+      const dy = canvasY - node.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance <= radius;
     });
 
     if (clickedNode) {
       setIsDragging(true);
-      setDragStart({ x: e.clientX - clickedNode.x, y: e.clientY - clickedNode.y });
+      // Store the offset between mouse position and node position
+      setDragStart({ 
+        x: e.clientX, 
+        y: e.clientY, 
+        nodeX: clickedNode.x, 
+        nodeY: clickedNode.y 
+      });
       setSelectedNode(clickedNode.id);
+      e.preventDefault(); // Prevent text selection
     }
   };
 
@@ -571,10 +845,16 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const newX = (e.clientX - rect.left) / zoom - pan.x;
-    const newY = (e.clientY - rect.top) / zoom - pan.y;
+    // Calculate mouse movement delta
+    const deltaX = (e.clientX - dragStart.x) / zoom;
+    const deltaY = (e.clientY - dragStart.y) / zoom;
+    
+    // Update node position based on original position + delta
+    const newX = dragStart.nodeX + deltaX;
+    const newY = dragStart.nodeY + deltaY;
 
     updateNode(selectedNode, { x: newX, y: newY });
+    e.preventDefault();
   };
 
   const handleCanvasMouseUp = () => {
@@ -649,7 +929,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
             <Button
               variant="outline"
               size="sm"
-              onClick={() => addNode(selectedNode || 'root', 'concept')}
+              onClick={() => addNode(selectedNode || 'root', 'CONCEPT')}
               className="bg-purple-500/20 border-purple-400/30 text-purple-200 hover:bg-purple-500/30"
             >
               <Lightbulb className="h-4 w-4 mr-2" />
@@ -658,7 +938,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
             <Button
               variant="outline"
               size="sm"
-              onClick={() => addNode(selectedNode || 'root', 'formula')}
+              onClick={() => addNode(selectedNode || 'root', 'FORMULA')}
               className="bg-cyan-500/20 border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/30"
             >
               <Calculator className="h-4 w-4 mr-2" />
@@ -667,16 +947,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
             <Button
               variant="outline"
               size="sm"
-              onClick={() => addNode(selectedNode || 'root', 'example')}
-              className="bg-amber-500/20 border-amber-400/30 text-amber-200 hover:bg-amber-500/30"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Thêm ví dụ
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addNode(selectedNode || 'root', 'exercise')}
+              onClick={() => addNode(selectedNode || 'root', 'EXERCISE')}
               className="bg-pink-500/20 border-pink-400/30 text-pink-200 hover:bg-pink-500/30"
             >
               <FileQuestion className="h-4 w-4 mr-2" />
@@ -723,6 +994,16 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
             </Button>
 
             <div className="flex items-center gap-2 ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => centerView(1.0)}
+                className="bg-blue-500/20 border-blue-400/30 text-blue-200 hover:bg-blue-500/30"
+                title="Căn giữa view để xem tất cả nodes"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Căn giữa
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -811,8 +1092,8 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
                 <div>
                   <Label htmlFor="nodeType" className="text-purple-200">Loại node</Label>
                   <Select
-                    value={editingNode.nodeType || 'concept'}
-                    onValueChange={(value: 'concept' | 'formula' | 'example' | 'exercise') =>
+                    value={editingNode.nodeType || 'CONCEPT'}
+                    onValueChange={(value: 'CONCEPT' | 'FORMULA' | 'EXERCISE') =>
                       setEditingNode({...editingNode, nodeType: value, color: nodeTypeColors[value]})
                     }
                   >
@@ -820,10 +1101,9 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-purple-900 border-purple-500/30">
-                      <SelectItem value="concept" className="text-purple-200">Khái niệm</SelectItem>
-                      <SelectItem value="formula" className="text-cyan-300">Công thức</SelectItem>
-                      <SelectItem value="example" className="text-amber-300">Ví dụ</SelectItem>
-                      <SelectItem value="exercise" className="text-pink-300">Bài tập</SelectItem>
+                      <SelectItem value="CONCEPT" className="text-purple-200">Khái niệm</SelectItem>
+                      <SelectItem value="FORMULA" className="text-cyan-300">Công thức</SelectItem>
+                      <SelectItem value="EXERCISE" className="text-pink-300">Bài tập</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -971,8 +1251,9 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
       {/* Node Details Modal */}
       {showNodeDetails && detailsNode && (
         <NodeDetailView
-          nodeId={detailsNode.backendId?.toString() || detailsNode.id}
+          nodeId={detailsNode.backendId ? detailsNode.backendId.toString() : detailsNode.id.replace('node_', '').replace('root', '')}
           nodeName={detailsNode.label}
+          nodeType={detailsNode.nodeType}
           onClose={() => {
             setShowNodeDetails(false);
             setDetailsNode(null);

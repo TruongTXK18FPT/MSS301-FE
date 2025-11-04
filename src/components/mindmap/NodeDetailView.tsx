@@ -21,23 +21,42 @@ import { mindmapService } from '@/lib/services/mindmapService';
 import { 
   ExerciseResponse, 
   FormulaResponse, 
-  ConceptResponse 
+  ConceptResponse,
+  ConceptRequest,
+  FormulaRequest,
+  ExerciseRequest
 } from '@/lib/dto/mindmap';
+import { ConceptForm, FormulaForm, ExerciseForm } from './NodeContentForms';
+import LatexPreview from '@/components/classroom/LatexPreview';
 
 interface NodeDetailViewProps {
   nodeId: string;
   nodeName: string;
+  nodeType?: 'CONCEPT' | 'FORMULA' | 'EXERCISE';
   onClose: () => void;
 }
 
-export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetailViewProps) {
-  const [activeTab, setActiveTab] = useState('concepts');
+export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: NodeDetailViewProps) {
+  // Auto-select tab based on nodeType
+  const getInitialTab = () => {
+    if (nodeType === 'FORMULA') return 'formulas';
+    if (nodeType === 'EXERCISE') return 'exercises';
+    return 'concepts'; // Default for CONCEPT
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
   const [concepts, setConcepts] = useState<ConceptResponse[]>([]);
   const [formulas, setFormulas] = useState<FormulaResponse[]>([]);
   const [exercises, setExercises] = useState<ExerciseResponse[]>([]);
+  
+  // Form states
+  const [showConceptForm, setShowConceptForm] = useState(false);
+  const [showFormulaForm, setShowFormulaForm] = useState(false);
+  const [showExerciseForm, setShowExerciseForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     loadNodeData();
@@ -65,9 +84,28 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
         mindmapService.getExercisesByNode(nodeIdNum)
       ]);
       
-      setConcepts(conceptsData.status === 'fulfilled' ? conceptsData.value : []);
-      setFormulas(formulasData.status === 'fulfilled' ? formulasData.value : []);
-      setExercises(exercisesData.status === 'fulfilled' ? exercisesData.value : []);
+      const loadedConcepts = conceptsData.status === 'fulfilled' ? conceptsData.value : [];
+      const loadedFormulas = formulasData.status === 'fulfilled' ? formulasData.value : [];
+      const loadedExercises = exercisesData.status === 'fulfilled' ? exercisesData.value : [];
+      
+      setConcepts(loadedConcepts);
+      setFormulas(loadedFormulas);
+      setExercises(loadedExercises);
+      
+      // Auto-select tab with content based on nodeType
+      if (activeTab === getInitialTab()) {
+        // If current tab is empty, switch to first available tab
+        if (activeTab === 'concepts' && loadedConcepts.length === 0) {
+          if (loadedFormulas.length > 0) setActiveTab('formulas');
+          else if (loadedExercises.length > 0) setActiveTab('exercises');
+        } else if (activeTab === 'formulas' && loadedFormulas.length === 0) {
+          if (loadedConcepts.length > 0) setActiveTab('concepts');
+          else if (loadedExercises.length > 0) setActiveTab('exercises');
+        } else if (activeTab === 'exercises' && loadedExercises.length === 0) {
+          if (loadedConcepts.length > 0) setActiveTab('concepts');
+          else if (loadedFormulas.length > 0) setActiveTab('formulas');
+        }
+      }
       
       // Log errors but don't fail entirely
       if (conceptsData.status === 'rejected') {
@@ -120,6 +158,78 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
     }
   };
 
+  // Handle create concept
+  const handleCreateConcept = async (data: ConceptRequest) => {
+    setIsSaving(true);
+    try {
+      await mindmapService.createConcept(data);
+      await loadNodeData();
+      setShowConceptForm(false);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle create formula
+  const handleCreateFormula = async (data: FormulaRequest) => {
+    setIsSaving(true);
+    try {
+      await mindmapService.createFormula(data);
+      await loadNodeData();
+      setShowFormulaForm(false);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle create exercise
+  const handleCreateExercise = async (data: ExerciseRequest) => {
+    setIsSaving(true);
+    try {
+      await mindmapService.createExercise(data);
+      await loadNodeData();
+      setShowExerciseForm(false);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle delete concept
+  const handleDeleteConcept = async (conceptId: number) => {
+    try {
+      await mindmapService.deleteConcept(conceptId);
+      await loadNodeData();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  // Handle delete formula
+  const handleDeleteFormula = async (formulaId: number) => {
+    try {
+      await mindmapService.deleteFormula(formulaId);
+      await loadNodeData();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  // Handle delete exercise
+  const handleDeleteExercise = async (exerciseId: number) => {
+    try {
+      await mindmapService.deleteExercise(exerciseId);
+      await loadNodeData();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
@@ -139,7 +249,16 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl font-bold">{nodeName}</CardTitle>
-              <p className="text-purple-100 text-sm mt-1">Chi tiết nội dung node</p>
+              <p className="text-purple-100 text-sm mt-1">
+                Chi tiết nội dung node 
+                {nodeType && (
+                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded text-xs">
+                    {nodeType === 'CONCEPT' ? 'Khái niệm' : 
+                     nodeType === 'FORMULA' ? 'Công thức' : 
+                     nodeType === 'EXERCISE' ? 'Bài tập' : 'Node'}
+                  </span>
+                )}
+              </p>
             </div>
             <Button
               variant="ghost"
@@ -161,23 +280,35 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="concepts" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Khái niệm ({concepts.length})
-              </TabsTrigger>
-              <TabsTrigger value="formulas" className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                Công thức ({formulas.length})
-              </TabsTrigger>
-              <TabsTrigger value="exercises" className="flex items-center gap-2">
-                <FileQuestion className="h-4 w-4" />
-                Bài tập ({exercises.length})
-              </TabsTrigger>
+            <TabsList className={`grid w-full mb-6 ${
+              nodeType === 'CONCEPT' ? 'grid-cols-1' : 
+              nodeType === 'FORMULA' ? 'grid-cols-1' : 
+              nodeType === 'EXERCISE' ? 'grid-cols-1' : 
+              'grid-cols-3'
+            }`}>
+              {(!nodeType || nodeType === 'CONCEPT') && (
+                <TabsTrigger value="concepts" className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Khái niệm ({concepts.length})
+                </TabsTrigger>
+              )}
+              {(!nodeType || nodeType === 'FORMULA') && (
+                <TabsTrigger value="formulas" className="flex items-center gap-2">
+                  <Calculator className="h-4 w-4" />
+                  Công thức ({formulas.length})
+                </TabsTrigger>
+              )}
+              {(!nodeType || nodeType === 'EXERCISE') && (
+                <TabsTrigger value="exercises" className="flex items-center gap-2">
+                  <FileQuestion className="h-4 w-4" />
+                  Bài tập ({exercises.length})
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Concepts Tab */}
-            <TabsContent value="concepts" className="space-y-4">
+            {(!nodeType || nodeType === 'CONCEPT') && (
+              <TabsContent value="concepts" className="space-y-4">
               {concepts.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -187,9 +318,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                   </p>
                   <Button 
                     className="bg-purple-600 hover:bg-purple-700"
-                    onClick={() => {
-                      alert('Tính năng thêm khái niệm thủ công sẽ được phát triển. Hiện tại hãy dùng "Tạo bài tập AI" để tự động tạo nội dung.');
-                    }}
+                    onClick={() => setShowConceptForm(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Thêm khái niệm
@@ -207,13 +336,13 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                     <CardContent className="space-y-3">
                       <div>
                         <h4 className="font-semibold text-sm text-gray-700 mb-1">Định nghĩa:</h4>
-                        <p className="text-sm text-gray-600">{concept.definition}</p>
+                        <LatexPreview content={concept.definition} className="text-sm text-gray-600" />
                       </div>
                       
                       {concept.explanation && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-700 mb-1">Giải thích:</h4>
-                          <p className="text-sm text-gray-600">{concept.explanation}</p>
+                          <LatexPreview content={concept.explanation} className="text-sm text-gray-600" />
                         </div>
                       )}
 
@@ -222,7 +351,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                           <h4 className="font-semibold text-sm text-gray-700 mb-1">Điểm chính:</h4>
                           <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                             {concept.keyPoints.map((point, idx) => (
-                              <li key={idx}>{point}</li>
+                              <li key={idx}><LatexPreview content={point} className="inline" /></li>
                             ))}
                           </ul>
                         </div>
@@ -233,7 +362,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                           <h4 className="font-semibold text-sm text-gray-700 mb-1">Ví dụ:</h4>
                           <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                             {concept.examples.map((example, idx) => (
-                              <li key={idx}>{example}</li>
+                              <li key={idx}><LatexPreview content={example} className="inline" /></li>
                             ))}
                           </ul>
                         </div>
@@ -245,7 +374,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                             <Lightbulb className="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
                             <div>
                               <h4 className="font-semibold text-sm text-yellow-900 mb-1">Mẹo:</h4>
-                              <p className="text-sm text-yellow-800">{concept.tips}</p>
+                              <LatexPreview content={concept.tips} className="text-sm text-yellow-800" />
                             </div>
                           </div>
                         </div>
@@ -255,9 +384,11 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                 ))
               )}
             </TabsContent>
+            )}
 
             {/* Formulas Tab */}
-            <TabsContent value="formulas" className="space-y-4">
+            {(!nodeType || nodeType === 'FORMULA') && (
+              <TabsContent value="formulas" className="space-y-4">
               {formulas.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -267,9 +398,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                   </p>
                   <Button 
                     className="bg-cyan-600 hover:bg-cyan-700"
-                    onClick={() => {
-                      alert('Tính năng thêm công thức thủ công sẽ được phát triển. Hiện tại hãy dùng "Tạo bài tập AI" để tự động tạo nội dung.');
-                    }}
+                    onClick={() => setShowFormulaForm(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Thêm công thức
@@ -288,8 +417,11 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className="bg-gray-50 rounded-lg p-4 font-mono text-center">
-                        {formula.formulaLatex || formula.formulaText}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <LatexPreview 
+                          content={formula.formulaLatex || formula.formulaText} 
+                          className="text-center text-lg"
+                        />
                       </div>
 
                       {formula.variables && Object.keys(formula.variables).length > 0 && (
@@ -309,7 +441,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                       {formula.conditions && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-700 mb-1">Điều kiện:</h4>
-                          <p className="text-sm text-gray-600">{formula.conditions}</p>
+                          <LatexPreview content={formula.conditions} className="text-sm text-gray-600" />
                         </div>
                       )}
                     </CardContent>
@@ -317,9 +449,11 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                 ))
               )}
             </TabsContent>
+            )}
 
             {/* Exercises Tab */}
-            <TabsContent value="exercises" className="space-y-4">
+            {(!nodeType || nodeType === 'EXERCISE') && (
+              <TabsContent value="exercises" className="space-y-4">
               {exercises.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <FileQuestion className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -337,9 +471,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                     </Button>
                     <Button 
                       variant="outline"
-                      onClick={() => {
-                        alert('Tính năng thêm bài tập thủ công sẽ được phát triển.');
-                      }}
+                      onClick={() => setShowExerciseForm(true)}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Thêm thủ công
@@ -368,7 +500,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                     <CardContent className="space-y-3">
                       <div>
                         <h4 className="font-semibold text-sm text-gray-700 mb-1">Câu hỏi:</h4>
-                        <p className="text-sm text-gray-600">{exercise.question}</p>
+                        <LatexPreview content={exercise.question} className="text-sm text-gray-600" />
                       </div>
 
                       {exercise.hints && exercise.hints.length > 0 && (
@@ -376,7 +508,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                           <h4 className="font-semibold text-sm text-gray-700 mb-1">Gợi ý:</h4>
                           <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                             {exercise.hints.map((hint, idx) => (
-                              <li key={idx}>{hint}</li>
+                              <li key={idx}><LatexPreview content={hint} className="inline" /></li>
                             ))}
                           </ul>
                         </div>
@@ -385,7 +517,7 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                       {exercise.solution && (
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                           <h4 className="font-semibold text-sm text-green-900 mb-1">Lời giải:</h4>
-                          <p className="text-sm text-green-800">{exercise.solution}</p>
+                          <LatexPreview content={exercise.solution} className="text-sm text-green-800" />
                         </div>
                       )}
 
@@ -407,9 +539,50 @@ export default function NodeDetailView({ nodeId, nodeName, onClose }: NodeDetail
                 ))
               )}
             </TabsContent>
+            )}
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Concept Form */}
+      {showConceptForm && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <ConceptForm
+              nodeId={parseInt(nodeId)}
+              onSubmit={handleCreateConcept}
+              onCancel={() => setShowConceptForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Formula Form */}
+      {showFormulaForm && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <FormulaForm
+              nodeId={parseInt(nodeId)}
+              onSubmit={handleCreateFormula}
+              onCancel={() => setShowFormulaForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Exercise Form */}
+      {showExerciseForm && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <ExerciseForm
+              nodeId={parseInt(nodeId)}
+              onSubmit={handleCreateExercise}
+              onCancel={() => setShowExerciseForm(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

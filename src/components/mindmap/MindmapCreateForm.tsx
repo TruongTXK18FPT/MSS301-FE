@@ -51,7 +51,7 @@ const COGNITIVE_LEVELS = [
 ];
 
 const AI_PROVIDERS = [
-  { value: "MISTRAL", label: "Mistral AI", description: "Tốc độ nhanh, phù hợp cho nội dung cơ bản", icon: Zap },
+  { value: "GEMINI", label: "Google Gemini 2.0", description: "AI thông minh, tạo mindmap chi tiết 15-20 nodes với nội dung phong phú", icon: Sparkles },
 ];
 
 export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<MindmapCreateFormProps>) {
@@ -61,14 +61,14 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
     title: '',
     description: '',
     grade: '',
-    subject: 'toan',
+    subject: 'Toán học',
     difficulty: 'medium',
     estimatedTime: '',
-    aiProvider: 'MISTRAL',
-    aiModel: '',
+    aiProvider: 'GEMINI',
+    aiModel: 'gemini-2.0-flash-exp',
     cognitiveLevel: 'thong-hieu',
     visibility: 'PRIVATE' as 'PRIVATE' | 'PUBLIC' | 'CLASSROOM',
-    useDocuments: false, // false = general knowledge, true = based on documents
+    useDocuments: false, // false = general knowledge (Direct AI), true = based on documents (RAG)
     documentId: '',
     chapterId: '',
     lessonId: ''
@@ -107,23 +107,31 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
     try {
       const requestData: any = {
         topic: formData.title,
-        description: formData.description,
+        description: formData.description || `Mindmap về ${formData.title} cho lớp ${formData.grade}`,
         grade: formData.grade,
         subject: formData.subject,
-        aiProvider: formData.aiProvider as 'MISTRAL',
-        aiModel: formData.aiModel || undefined,
+        aiProvider: formData.aiProvider as 'GEMINI',
+        aiModel: formData.aiModel || 'gemini-2.0-flash-exp',
         visibility: formData.visibility,
         useDocuments: formData.useDocuments
       };
 
-      // Add document fields if using document-based mindmap
+      // Add document fields if using document-based mindmap (RAG flow)
       if (mindmapType === 'document') {
+        requestData.useDocuments = true;
+        requestData.aiProvider = 'MISTRAL';  // Use Mistral for RAG-based mindmap
         requestData.documentId = parseInt(formData.documentId);
         if (formData.chapterId) requestData.chapterId = parseInt(formData.chapterId);
         if (formData.lessonId) requestData.lessonId = parseInt(formData.lessonId);
+      } else {
+        // General knowledge - Direct AI flow
+        requestData.useDocuments = false;
+        requestData.aiProvider = 'GEMINI';  // Use Gemini for direct AI generation
       }
 
+      console.log('[MindmapCreateForm] Sending request:', requestData);
       const result = await mindmapService.generateMindmapWithAi(requestData);
+      console.log('[MindmapCreateForm] Result received:', result);
 
       setSuccess('Tạo mindmap thành công!');
       if (onSuccess) {
@@ -224,20 +232,25 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                       )}
                     </h4>
                     <p className="text-sm text-gray-600 mb-3">
-                      Tạo mindmap dựa trên kiến thức toán học tổng quát từ lớp 1-12 và kiến thức quốc tế
+                      Tạo mindmap dựa trên <strong>kiến thức toán học tổng quát</strong> từ Lớp 1-12 theo MOET và kiến thức quốc tế. 
+                      Sử dụng <strong>Google Gemini 2.5 Flash</strong> để tạo 15-20 nodes với nội dung chi tiết 200-500 từ/node.
                     </p>
                     <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        Google Gemini 2.5 Flash
+                      </Badge>
                       <Badge variant="outline" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
                         Không cần tài liệu
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
-                        15-20+ nodes
+                        15-20+ nodes chi tiết
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
-                        Đa dạng nguồn
+                        Có emoji, công thức & bài tập
                       </Badge>
                     </div>
                   </div>
@@ -271,20 +284,25 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                       )}
                     </h4>
                     <p className="text-sm text-gray-600 mb-3">
-                      Tạo mindmap dựa trên tài liệu giáo trình đã upload (sách giáo khoa, bài giảng...)
+                      Tạo mindmap dựa trên <strong>tài liệu giáo trình</strong> đã upload (SGK, bài giảng...). 
+                      Sử dụng <strong>RAG Service với Mistral AI</strong> để truy xuất nội dung chính xác từ document.
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
-                        Theo SGK
+                        Mistral AI + RAG Service
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
-                        10+ nodes
+                        Theo SGK/tài liệu
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
-                        Chuẩn MOET
+                        10+ nodes từ tài liệu
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Check className="h-3 w-3 mr-1" />
+                        Chuẩn nội dung MOET
                       </Badge>
                     </div>
                   </div>
@@ -333,29 +351,32 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                     </Label>
                     <Input
                       id="title"
-                      placeholder="Ví dụ: Phương trình bậc hai, Hình học phẳng..."
+                      placeholder="VD: Phương trình bậc hai, Hình học không gian, Đạo hàm..."
                       value={formData.title}
                       onChange={(e) => handleInputChange('title', e.target.value)}
                       className="peer transition-all focus:ring-2 focus:ring-blue-500"
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      Nhập tên chủ đề bạn muốn tạo mindmap
+                      💡 Nhập tên chủ đề bạn muốn tạo mindmap - AI sẽ tạo 15-20 nodes chi tiết
                     </p>
                   </div>
 
                   <div className="relative group">
                     <Label htmlFor="description" className="text-sm font-semibold mb-2 block">
                       <Info className="inline-block mr-2 h-4 w-4 text-purple-600" />
-                      Mô tả chi tiết
+                      Mô tả chi tiết (tùy chọn)
                     </Label>
                     <Textarea
                       id="description"
-                      placeholder="Mô tả ngắn gọn về nội dung mindmap, mục tiêu học tập..."
+                      placeholder="VD: Tôi muốn học về cách giải phương trình bậc hai, công thức nghiệm, biệt thức delta và ứng dụng thực tế..."
                       value={formData.description}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       rows={3}
                       className="transition-all focus:ring-2 focus:ring-purple-500"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      📝 Mô tả thêm về nội dung mindmap để AI tạo chính xác hơn
+                    </p>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
@@ -551,16 +572,31 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                   <div className="flex items-start gap-3">
                     <Lightbulb className="h-5 w-5 text-blue-600 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-blue-900 mb-1">Mẹo tạo mindmap hiệu quả</h4>
+                      <h4 className="font-semibold text-blue-900 mb-1">Công nghệ AI được sử dụng</h4>
                       <p className="text-sm text-blue-800">
-                        Các tùy chọn nâng cao giúp bạn tùy chỉnh mindmap theo nhu cầu cụ thể.
-                        Điều chỉnh thời gian ước tính và cấu hình AI để có kết quả tốt nhất.
+                        {mindmapType === 'general' ? (
+                          <>
+                            <strong>Google Gemini 2.5 Flash</strong> - Model AI tiên tiến nhất với khả năng tạo mindmap chi tiết 15-20 nodes,
+                            mỗi node có 200-500 từ với emoji, công thức LaTeX (x², √, ∫), ví dụ cụ thể và bài tập có đáp án.
+                            Tự động fallback về Gemini 1.5 Flash hoặc 2.0 Flash nếu cần.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Mistral AI + RAG Service</strong> - Sử dụng Retrieval-Augmented Generation để truy xuất nội dung 
+                            chính xác từ tài liệu giáo trình (SGK, bài giảng). Đảm bảo mindmap được tạo dựa trên nội dung chuẩn MOET.
+                          </>
+                        )}
                       </p>
+                      <div className="mt-2 text-xs text-blue-700 font-mono bg-blue-100 px-2 py-1 rounded inline-block">
+                        {mindmapType === 'general' 
+                          ? 'Model: gemini-2.5-flash (primary) → gemini-1.5-flash → gemini-2.0-flash' 
+                          : 'Model: mistral-large-latest + RAG'}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="estimatedTime" className="text-sm font-semibold">
                       <Clock className="inline-block mr-2 h-4 w-4 text-indigo-600" />
@@ -580,43 +616,6 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                       </SelectContent>
                     </Select>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="aiProvider" className="text-sm font-semibold">
-                      <Sparkles className="inline-block mr-2 h-4 w-4 text-purple-600" />
-                      AI Provider
-                    </Label>
-                    <Select value={formData.aiProvider} onValueChange={(value) => handleInputChange('aiProvider', value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AI_PROVIDERS.map((provider) => (
-                          <SelectItem key={provider.value} value={provider.value}>
-                            <div className="flex items-center gap-2">
-                              <provider.icon className="h-4 w-4" />
-                              <div>
-                                <div className="font-medium">{provider.label}</div>
-                                <div className="text-xs text-gray-500">{provider.description}</div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="aiModel" className="text-sm font-semibold">
-                    AI Model (Tùy chọn)
-                  </Label>
-                  <Input
-                    id="aiModel"
-                    placeholder="Để trống để sử dụng model mặc định"
-                    value={formData.aiModel}
-                    onChange={(e) => handleInputChange('aiModel', e.target.value)}
-                  />
                 </div>
               </div>
             )}

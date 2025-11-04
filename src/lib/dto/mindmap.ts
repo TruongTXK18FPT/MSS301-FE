@@ -15,6 +15,21 @@ export interface MindmapResponse {
   updatedAt: string;
 }
 
+// Generate Mindmap Request
+export interface GenerateMindmapRequest {
+  topic: string;
+  description?: string;
+  grade: string;
+  subject: string;
+  aiProvider: 'MISTRAL' | 'GEMINI';
+  aiModel?: string;
+  visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASSROOM';
+  useDocuments: boolean;  // false = Direct AI (Gemini), true = RAG from documents (Mistral)
+  documentId?: number;
+  chapterId?: number;
+  lessonId?: number;
+}
+
 // Exercise DTOs
 export interface ExerciseResponse {
   id: number;

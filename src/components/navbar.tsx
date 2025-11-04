@@ -6,10 +6,9 @@ import { Button } from './ui/button';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
-import { Menu, Home, Map, Brain, Target, GraduationCap, Bot, User, Rocket } from 'lucide-react';
+import { Menu, Home, Map, Brain, Target, GraduationCap, Bot, User, Rocket, Crown } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
-import { isAdmin } from '@/lib/role-utils';
 import AdminBadge from '@/components/admin-badge';
 import AdminQuickAccess from '@/components/admin-quick-access';
 
@@ -17,18 +16,25 @@ const navLinks = [
   { href: '/', label: 'Trang chủ', icon: Home, highlight: false },
   { href: '/roadmap', label: 'Lộ trình', icon: Map, highlight: false },
   { href: '/mindmap', label: 'MindMap', icon: Brain, highlight: true },
+  { href: '/premium', label: 'Premium', icon: Crown, highlight: true, isPremium: true },
   { href: '/chat', label: 'AI Chat Bot', icon: Bot, highlight: false },
   { href: '/practice', label: 'Luyện tập', icon: Target, highlight: false },
   { href: '/class', label: 'Lớp học', icon: GraduationCap, highlight: false },
 ];
 
-const NavLink = ({ href, label, icon: Icon, highlight = false }: { href: string; label: string; icon: any; highlight?: boolean }) => {
+const NavLink = ({ href, label, icon: Icon, highlight = false, isPremium = false }: { href: string; label: string; icon: any; highlight?: boolean; isPremium?: boolean }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
 
   const getLinkClassName = () => {
     if (isActive) {
+      if (isPremium) {
+        return "text-white bg-gradient-to-r from-amber-500/30 to-yellow-500/30 border-2 border-amber-400/50 shadow-xl shadow-amber-500/20";
+      }
       return "text-ink-white bg-gradient-to-r from-violet/20 to-teal/20 border border-violet/30 shadow-lg";
+    }
+    if (isPremium) {
+      return "text-amber-200 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border-2 border-amber-400/30 hover:from-amber-500/30 hover:to-yellow-500/30 hover:border-amber-400/50 hover:shadow-xl hover:shadow-amber-500/20 hover:scale-105";
     }
     if (highlight) {
       return "text-ink-white bg-gradient-to-r from-violet/10 to-teal/10 border border-violet/20 hover:from-violet/20 hover:to-teal/20 hover:border-violet/30 hover:shadow-lg hover:scale-105";
@@ -37,6 +43,9 @@ const NavLink = ({ href, label, icon: Icon, highlight = false }: { href: string;
   };
 
   const getIconClassName = () => {
+    if (isPremium) {
+      return "text-amber-400 group-hover:text-amber-300 group-hover:scale-125 group-hover:rotate-12 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]";
+    }
     if (isActive) {
       return "text-violet-400";
     }
@@ -55,11 +64,14 @@ const NavLink = ({ href, label, icon: Icon, highlight = false }: { href: string;
       )}
     >
       <Icon className={cn(
-        "size-4 transition-transform duration-300",
+        "size-4 transition-all duration-300",
         getIconClassName()
       )} />
       {label}
-      {highlight && (
+      {isPremium && (
+        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 rounded-full" />
+      )}
+      {highlight && !isPremium && (
         <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-violet to-teal rounded-full animate-pulse" />
       )}
     </Link>
@@ -67,7 +79,7 @@ const NavLink = ({ href, label, icon: Icon, highlight = false }: { href: string;
 };
 
 const Navbar = () => {
-  const { token, logout, role, roleId } = useAuth();
+  const { token, logout, role } = useAuth();
   const { canCreateClassroom } = usePermissions();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-surface/80 backdrop-blur-lg">
@@ -85,7 +97,7 @@ const Navbar = () => {
           {token ? (
             <>
               {/* Admin Quick Access */}
-              {isAdmin(role, roleId) && (
+              {role === 'ADMIN' && (
                 <div className="flex items-center gap-2">
                   <AdminBadge variant="compact" />
                   <AdminQuickAccess variant="button" />
@@ -144,6 +156,9 @@ const Navbar = () => {
                         <div className="flex flex-col gap-2 p-4">
                             {navLinks.map((link) => {
                               const getMobileLinkClassName = () => {
+                                if (link.isPremium) {
+                                  return "text-amber-200 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border-2 border-amber-400/30 hover:from-amber-500/30 hover:to-yellow-500/30 hover:border-amber-400/50 hover:shadow-xl hover:shadow-amber-500/20";
+                                }
                                 if (link.highlight) {
                                   return "text-ink-white bg-gradient-to-r from-violet/10 to-teal/10 border border-violet/20 hover:from-violet/20 hover:to-teal/20 hover:border-violet/30 hover:shadow-lg";
                                 }
@@ -151,6 +166,9 @@ const Navbar = () => {
                               };
 
                               const getMobileIconClassName = () => {
+                                if (link.isPremium) {
+                                  return "text-amber-400 group-hover:text-amber-300 group-hover:scale-125 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]";
+                                }
                                 if (link.highlight) {
                                   return "text-violet-300 group-hover:text-violet-400 group-hover:scale-110";
                                 }
@@ -171,8 +189,11 @@ const Navbar = () => {
                                         getMobileIconClassName()
                                     )} />
                                     {link.label}
-                                    {link.highlight && (
-                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-violet to-teal rounded-full animate-pulse" />
+                                    {link.isPremium && (
+                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 rounded-full" />
+                                    )}
+                                    {link.highlight && !link.isPremium && (
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-r from-violet to-teal rounded-full" />
                                     )}
                                 </Link>
                               );
@@ -182,7 +203,7 @@ const Navbar = () => {
                           {token ? (
                             <>
                               {/* Admin Quick Access for Mobile */}
-                              {isAdmin(role, roleId) && (
+                              {role === 'ADMIN' && (
                                 <div className="space-y-2">
                                   <AdminBadge variant="mobile" className="w-full justify-center" />
                                   <AdminQuickAccess variant="mobile" />
