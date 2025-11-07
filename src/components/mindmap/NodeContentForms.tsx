@@ -42,18 +42,14 @@ export function ConceptForm({ nodeId, onSubmit, onCancel }: ConceptFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      // Parse string arrays
-      const parseLines = (text: string) => 
-        text ? text.split('\n').filter(line => line.trim()) : undefined;
-
       await onSubmit({
         nodeId: formData.nodeId,
-        conceptName: formData.conceptName,
+        name: formData.conceptName,  // Backend expects 'name', not 'conceptName'
         definition: formData.definition,
         explanation: formData.explanation || undefined,
-        keyPoints: parseLines(formData.keyPoints),
-        examples: parseLines(formData.examples),
-        commonMistakes: parseLines(formData.commonMistakes),
+        keyPoints: formData.keyPoints || undefined,
+        examples: formData.examples || undefined,
+        commonMistakes: formData.commonMistakes || undefined,
         tips: formData.tips || undefined,
         prerequisites: formData.prerequisites || undefined,
         relatedConcepts: formData.relatedConcepts || undefined
@@ -207,29 +203,13 @@ export function FormulaForm({ nodeId, onSubmit, onCancel }: FormulaFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      // Parse variables string to object
-      const variablesObj: Record<string, string> = {};
-      if (formData.variables) {
-        const lines = formData.variables.split('\n');
-        lines.forEach(line => {
-          const parts = line.split('=');
-          if (parts.length === 2) {
-            const key = parts[0].trim();
-            const value = parts[1].trim();
-            if (key) {
-              variablesObj[key] = value;
-            }
-          }
-        });
-      }
-
       await onSubmit({
         nodeId: formData.nodeId,
-        formulaName: formData.formulaName,
+        name: formData.formulaName,
         formulaText: formData.formulaText,
-        formulaLatex: formData.formulaLatex,
-        variables: variablesObj,
-        conditions: formData.conditions,
+        formulaLatex: formData.formulaLatex || undefined,
+        variables: formData.variables || undefined,
+        conditions: formData.conditions || undefined,
         isPrimary: formData.isPrimary
       });
     } finally {
@@ -354,20 +334,14 @@ export function ExerciseForm({ nodeId, onSubmit, onCancel }: ExerciseFormProps) 
     e.preventDefault();
     setLoading(true);
     try {
-      // Parse hints string to array
-      const hintsArray = formData.hints
-        ? formData.hints.split('\n').filter(h => h.trim())
-        : undefined;
-
       await onSubmit({
         nodeId: formData.nodeId,
         question: formData.question,
         solution: formData.solution || undefined,
-        hints: hintsArray,
-        difficultyLevel: formData.difficultyLevel,
+        hints: formData.hints || undefined,
+        difficulty: formData.difficultyLevel,
         cognitiveLevel: formData.cognitiveLevel,
-        estimatedTime: formData.estimatedTime,
-        points: formData.points
+        estimatedTime: formData.estimatedTime
       });
     } finally {
       setLoading(false);

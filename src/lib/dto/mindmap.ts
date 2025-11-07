@@ -35,12 +35,15 @@ export interface ExerciseResponse {
   id: number;
   nodeId: number;
   question: string;
+  answer?: string;
   solution?: string;
   hints?: string[];
-  difficultyLevel: 'EASY' | 'MEDIUM' | 'HARD' | 'VERY_HARD';
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'VERY_HARD';
   cognitiveLevel: 'RECOGNITION' | 'COMPREHENSION' | 'APPLICATION' | 'ADVANCED_APPLICATION';
   estimatedTime?: number;
-  points?: number;
+  orderIndex?: number;
+  isActive?: boolean;
+  createdBy?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,23 +51,28 @@ export interface ExerciseResponse {
 export interface ExerciseRequest {
   nodeId: number;
   question: string;
+  answer?: string;
   solution?: string;
-  hints?: string[];
-  difficultyLevel: 'EASY' | 'MEDIUM' | 'HARD' | 'VERY_HARD';
-  cognitiveLevel: 'RECOGNITION' | 'COMPREHENSION' | 'APPLICATION' | 'ADVANCED_APPLICATION';
+  hints?: string; // JSON array string
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD' | 'VERY_HARD';
+  cognitiveLevel?: 'RECOGNITION' | 'COMPREHENSION' | 'APPLICATION' | 'ADVANCED_APPLICATION';
   estimatedTime?: number;
-  points?: number;
+  orderIndex?: number;
+  isActive?: boolean;
 }
 
 // Formula DTOs
 export interface FormulaResponse {
   id: number;
   nodeId: number;
-  formulaName: string;
+  name: string;
   formulaText: string;
   formulaLatex?: string;
-  variables?: Record<string, string>;
+  description?: string;
+  usageExample?: string;
+  variables?: string; // JSON string
   conditions?: string;
+  orderIndex?: number;
   isPrimary: boolean;
   createdAt: string;
   updatedAt: string;
@@ -72,11 +80,14 @@ export interface FormulaResponse {
 
 export interface FormulaRequest {
   nodeId: number;
-  formulaName: string;
+  name: string;
   formulaText: string;
   formulaLatex?: string;
-  variables?: Record<string, string>;
+  description?: string;
+  usageExample?: string;
+  variables?: string; // JSON string
   conditions?: string;
+  orderIndex?: number;
   isPrimary?: boolean;
 }
 
@@ -84,27 +95,28 @@ export interface FormulaRequest {
 export interface ConceptResponse {
   id: number;
   nodeId: number;
-  conceptName: string;
+  name: string;
   definition: string;
   explanation?: string;
-  keyPoints?: string[];
-  examples?: string[];
-  commonMistakes?: string[];
+  keyPoints?: string;
+  examples?: string;
+  commonMistakes?: string;
   tips?: string;
   prerequisites?: string;
   relatedConcepts?: string;
+  orderIndex?: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ConceptRequest {
   nodeId: number;
-  conceptName: string;
+  name: string;
   definition: string;
   explanation?: string;
-  keyPoints?: string[];
-  examples?: string[];
-  commonMistakes?: string[];
+  keyPoints?: string;
+  examples?: string;
+  commonMistakes?: string;
   tips?: string;
   prerequisites?: string;
   relatedConcepts?: string;

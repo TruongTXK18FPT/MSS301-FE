@@ -80,7 +80,7 @@ export const profileApi = axios.create({
 
 export const mindmapApi = axios.create({
   baseURL: `${GATEWAY_URL}${API_PREFIX}${MINDMAP_SERVICE_PATH}`,
-  timeout: 180000, // 3 minutes for AI generation
+  timeout: 300000, // 3 minutes for AI generation
   headers: {
     'Content-Type': 'application/json',
   },

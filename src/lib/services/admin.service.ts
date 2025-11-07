@@ -1,7 +1,10 @@
 import axios, { AxiosInstance } from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || "http://localhost:8081";
-const CLASSROOM_API_URL = process.env.NEXT_PUBLIC_CLASSROOM_SERVICE_URL || "http://localhost:8082";
+// Use Gateway URL instead of direct service URLs to avoid CORS issues
+const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8080";
+const API_BASE_URL = `${GATEWAY_URL}/api/v1`;
+const AUTH_API_URL = `${API_BASE_URL}/authenticate`;
+const CLASSROOM_API_URL = `${API_BASE_URL}/classrooms`;
 
 interface UserResponse {
   id: string;
@@ -48,11 +51,13 @@ class AdminService {
   private classroomApi: AxiosInstance;
 
   constructor() {
+    // For auth/admin endpoints
     this.api = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: AUTH_API_URL,
       timeout: 10000,
     });
 
+    // For classroom endpoints
     this.classroomApi = axios.create({
       baseURL: CLASSROOM_API_URL,
       timeout: 10000,
@@ -89,7 +94,7 @@ class AdminService {
   ): Promise<PaginatedResponse<UserResponse>> {
     try {
       const response = await this.api.get<ApiResponse<any>>(
-        `/api/v1/admin/users`,
+        `/admin/users`,
         {
           params: { page, size, sortBy, sortDirection },
         }
@@ -115,7 +120,7 @@ class AdminService {
   async getUserById(userId: string): Promise<UserResponse> {
     try {
       const response = await this.api.get<ApiResponse<UserResponse>>(
-        `/api/v1/admin/users/${userId}`
+        `/admin/users/${userId}`
       );
       return response.data.result;
     } catch (error) {
@@ -134,7 +139,7 @@ class AdminService {
   }): Promise<UserResponse> {
     try {
       const response = await this.api.post<ApiResponse<UserResponse>>(
-        `/api/v1/admin/users`,
+        `/admin/users`,
         userData
       );
       return response.data.result;
@@ -149,7 +154,7 @@ class AdminService {
    */
   async deleteUser(userId: string): Promise<void> {
     try {
-      await this.api.delete(`/api/v1/admin/users/${userId}`);
+      await this.api.delete(`/admin/users/${userId}`);
     } catch (error) {
       console.error(`Error deleting user ${userId}:`, error);
       throw error;
@@ -186,7 +191,7 @@ class AdminService {
   ): Promise<PaginatedResponse<ClassroomResponse>> {
     try {
       const response = await this.classroomApi.get<ApiResponse<any>>(
-        `/classrooms`,
+        ``,
         {
           params: { page, size },
         }
@@ -223,7 +228,7 @@ class AdminService {
   async getClassroomById(classroomId: number): Promise<ClassroomResponse> {
     try {
       const response = await this.classroomApi.get<ApiResponse<ClassroomResponse>>(
-        `/classrooms/${classroomId}`
+        `/${classroomId}`
       );
       return response.data.result;
     } catch (error) {
@@ -238,7 +243,7 @@ class AdminService {
   async createClassroom(classroomData: any): Promise<ClassroomResponse> {
     try {
       const response = await this.classroomApi.post<ApiResponse<ClassroomResponse>>(
-        `/classrooms`,
+        ``,
         classroomData
       );
       return response.data.result;
@@ -257,7 +262,7 @@ class AdminService {
   ): Promise<ClassroomResponse> {
     try {
       const response = await this.classroomApi.put<ApiResponse<ClassroomResponse>>(
-        `/classrooms/${classroomId}`,
+        `/${classroomId}`,
         classroomData
       );
       return response.data.result;
@@ -272,7 +277,7 @@ class AdminService {
    */
   async deleteClassroom(classroomId: number): Promise<void> {
     try {
-      await this.classroomApi.delete(`/classrooms/${classroomId}`);
+      await this.classroomApi.delete(`/${classroomId}`);
     } catch (error) {
       console.error(`Error deleting classroom ${classroomId}:`, error);
       throw error;

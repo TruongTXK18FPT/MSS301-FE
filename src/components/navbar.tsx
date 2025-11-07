@@ -14,7 +14,6 @@ import AdminQuickAccess from '@/components/admin-quick-access';
 
 const navLinks = [
   { href: '/', label: 'Trang chủ', icon: Home, highlight: false },
-  { href: '/roadmap', label: 'Lộ trình', icon: Map, highlight: false },
   { href: '/mindmap', label: 'MindMap', icon: Brain, highlight: true },
   { href: '/premium', label: 'Premium', icon: Crown, highlight: true, isPremium: true },
   { href: '/chat', label: 'AI Chat Bot', icon: Bot, highlight: false },

@@ -345,6 +345,30 @@ class MindmapService {
   }
 
   /**
+   * Generate concepts with AI
+   */
+  async generateConcepts(data: { nodeId: number; topic: string; numberOfConcepts: number }): Promise<ConceptResponse[]> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<ConceptResponse[]>>('/concepts/generate', data);
+      return response.data.result || [];
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Generate concepts failed');
+    }
+  }
+
+  /**
+   * Generate formulas with AI
+   */
+  async generateFormulas(data: { nodeId: number; topic: string; numberOfFormulas: number }): Promise<FormulaResponse[]> {
+    try {
+      const response = await mindmapApi.post<ApiResponse<FormulaResponse[]>>('/formulas/generate', data);
+      return response.data.result || [];
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Generate formulas failed');
+    }
+  }
+
+  /**
    * Cập nhật khái niệm
    */
   async updateConcept(id: number, data: Partial<ConceptRequest>): Promise<ConceptResponse> {

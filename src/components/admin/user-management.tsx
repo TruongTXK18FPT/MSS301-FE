@@ -1,31 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit, 
-  Trash2, 
+import {
+  Search,
+  Filter,
+  Plus,
+  Edit,
+  Trash2,
   MoreVertical,
   UserCheck,
   UserX,
   Mail,
   Phone,
   Calendar,
-  Shield
+  Shield,
+  Loader
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   DropdownMenu,
@@ -46,65 +47,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// Mock data
-const mockUsers = [
-  {
-    id: 1,
-    name: 'Nguyễn Văn An',
-    email: 'an.nguyen@example.com',
-    role: 'STUDENT',
-    status: 'active',
-    joinDate: '2024-01-15',
-    lastActive: '2024-01-20',
-    classroomCount: 3,
-    phone: '+84 123 456 789'
-  },
-  {
-    id: 2,
-    name: 'Trần Thị Bình',
-    email: 'binh.tran@example.com',
-    role: 'TEACHER',
-    status: 'active',
-    joinDate: '2024-01-10',
-    lastActive: '2024-01-20',
-    classroomCount: 5,
-    phone: '+84 987 654 321'
-  },
-  {
-    id: 3,
-    name: 'Lê Văn Cường',
-    email: 'cuong.le@example.com',
-    role: 'ADMIN',
-    status: 'active',
-    joinDate: '2024-01-01',
-    lastActive: '2024-01-20',
-    classroomCount: 0,
-    phone: '+84 555 123 456'
-  },
-  {
-    id: 4,
-    name: 'Phạm Thị Dung',
-    email: 'dung.pham@example.com',
-    role: 'STUDENT',
-    status: 'inactive',
-    joinDate: '2024-01-05',
-    lastActive: '2024-01-15',
-    classroomCount: 2,
-    phone: '+84 777 888 999'
-  },
-  {
-    id: 5,
-    name: 'Hoàng Văn Em',
-    email: 'em.hoang@example.com',
-    role: 'GUARDIAN',
-    status: 'active',
-    joinDate: '2024-01-12',
-    lastActive: '2024-01-19',
-    classroomCount: 1,
-    phone: '+84 333 444 555'
-  }
-];
+import { adminService, type UserResponse } from '@/lib/services/admin.service';
 
 const roleLabels = {
   ADMIN: 'Admin',
@@ -126,69 +69,98 @@ const statusColors = {
 };
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(mockUsers);
-  const [filteredUsers, setFilteredUsers] = useState(mockUsers);
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
 
-  // Filter users
+  // Fetch users from API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await adminService.getAllUsers(currentPage, pageSize);
+        setUsers(response.content);
+        setTotalUsers(response.totalElements);
+      } catch (err: any) {
+        console.error('Failed to fetch users:', err);
+        setError('Failed to load users. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [currentPage, pageSize]);
+
+  // Filter users locally
   useEffect(() => {
     let filtered = users;
 
     if (searchTerm) {
-      filtered = filtered.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      filtered = filtered.filter(user =>
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    if (roleFilter !== 'all') {
-      filtered = filtered.filter(user => user.role === roleFilter);
-    }
-
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(user => user.status === statusFilter);
+      filtered = filtered.filter(user =>
+        user.status.toLowerCase() === statusFilter.toLowerCase()
+      );
     }
 
     setFilteredUsers(filtered);
-  }, [users, searchTerm, roleFilter, statusFilter]);
+  }, [users, searchTerm, statusFilter]);
 
-  const handleDeleteUser = (userId: number) => {
-    setUsers(users.filter(user => user.id !== userId));
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await adminService.deleteUser(userId);
+      setUsers(users.filter(user => user.id !== userId));
+    } catch (err: any) {
+      console.error('Failed to delete user:', err);
+      setError('Failed to delete user. Please try again.');
+    }
   };
 
-  const handleToggleStatus = (userId: number) => {
-    setUsers(users.map(user => 
-      user.id === userId 
-        ? { ...user, status: user.status === 'active' ? 'inactive' : 'active' }
-        : user
-    ));
+  const handleToggleStatus = async (userId: string) => {
+    try {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      const newStatus = user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      await adminService.updateUserStatus(userId, newStatus as any);
+
+      // Refresh users list
+      const response = await adminService.getAllUsers(currentPage, pageSize);
+      setUsers(response.content);
+    } catch (err: any) {
+      console.error('Failed to update user status:', err);
+      setError('Failed to update user status. Please try again.');
+    }
   };
 
-  const handleCreateUser = (userData: any) => {
-    const newUser = {
-      id: Math.max(...users.map(u => u.id)) + 1,
-      ...userData,
-      joinDate: new Date().toISOString().split('T')[0],
-      lastActive: new Date().toISOString().split('T')[0],
-      classroomCount: 0
-    };
-    setUsers([...users, newUser]);
-    setIsCreateDialogOpen(false);
-  };
-
-  const handleEditUser = (userData: any) => {
-    setUsers(users.map(user => 
-      user.id === selectedUser.id 
-        ? { ...user, ...userData }
-        : user
-    ));
-    setIsEditDialogOpen(false);
-    setSelectedUser(null);
+  const handleCreateUser = async (userData: any) => {
+    try {
+      await adminService.createUser(userData);
+      // Refresh users list
+      const response = await adminService.getAllUsers(0, pageSize);
+      setUsers(response.content);
+      setCurrentPage(0);
+      setIsCreateDialogOpen(false);
+    } catch (err: any) {
+      console.error('Failed to create user:', err);
+      setError('Failed to create user. Please try again.');
+    }
   };
 
   return (
@@ -208,6 +180,13 @@ export default function UserManagement() {
         </Button>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-400">
+          {error}
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-slate-800/50 border-purple-500/20">
@@ -216,7 +195,7 @@ export default function UserManagement() {
               <UserCheck className="w-5 h-5 text-green-400" />
               <div>
                 <p className="text-sm text-slate-400">Tổng Users</p>
-                <p className="text-2xl font-bold text-white">{users.length}</p>
+                <p className="text-2xl font-bold text-white">{totalUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -228,7 +207,7 @@ export default function UserManagement() {
               <div>
                 <p className="text-sm text-slate-400">Hoạt động</p>
                 <p className="text-2xl font-bold text-white">
-                  {users.filter(u => u.status === 'active').length}
+                  {users.filter(u => u.status === 'ACTIVE').length}
                 </p>
               </div>
             </div>
@@ -237,11 +216,11 @@ export default function UserManagement() {
         <Card className="bg-slate-800/50 border-purple-500/20">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Shield className="w-5 h-5 text-purple-400" />
+              <Mail className="w-5 h-5 text-purple-400" />
               <div>
-                <p className="text-sm text-slate-400">Teachers</p>
+                <p className="text-sm text-slate-400">Email xác thực</p>
                 <p className="text-2xl font-bold text-white">
-                  {users.filter(u => u.role === 'TEACHER').length}
+                  {users.filter(u => u.emailVerified).length}
                 </p>
               </div>
             </div>
@@ -254,7 +233,7 @@ export default function UserManagement() {
               <div>
                 <p className="text-sm text-slate-400">Không hoạt động</p>
                 <p className="text-2xl font-bold text-white">
-                  {users.filter(u => u.status === 'inactive').length}
+                  {users.filter(u => u.status === 'INACTIVE').length}
                 </p>
               </div>
             </div>
@@ -270,34 +249,22 @@ export default function UserManagement() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
-                  placeholder="Tìm kiếm theo tên hoặc email..."
+                  placeholder="Tìm kiếm theo email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 bg-slate-700/50 border-purple-500/30 text-white placeholder:text-slate-400"
                 />
               </div>
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full sm:w-48 bg-slate-700/50 border-purple-500/30 text-white">
-                <SelectValue placeholder="Chọn role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả roles</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="TEACHER">Teacher</SelectItem>
-                <SelectItem value="STUDENT">Student</SelectItem>
-                <SelectItem value="GUARDIAN">Guardian</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48 bg-slate-700/50 border-purple-500/30 text-white">
                 <SelectValue placeholder="Chọn trạng thái" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="active">Hoạt động</SelectItem>
-                <SelectItem value="inactive">Không hoạt động</SelectItem>
-                <SelectItem value="suspended">Tạm khóa</SelectItem>
+                <SelectItem value="ACTIVE">Hoạt động</SelectItem>
+                <SelectItem value="INACTIVE">Không hoạt động</SelectItem>
+                <SelectItem value="SUSPENDED">Tạm khóa</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -309,126 +276,122 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle className="text-white">Danh sách Users</CardTitle>
           <CardDescription className="text-slate-400">
-            Hiển thị {filteredUsers.length} trong tổng số {users.length} users
+            {isLoading ? 'Đang tải...' : `Hiển thị ${filteredUsers.length} trong tổng số ${totalUsers} users`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-purple-500/20">
-                <TableHead className="text-slate-300">User</TableHead>
-                <TableHead className="text-slate-300">Role</TableHead>
-                <TableHead className="text-slate-300">Trạng thái</TableHead>
-                <TableHead className="text-slate-300">Lớp học</TableHead>
-                <TableHead className="text-slate-300">Ngày tham gia</TableHead>
-                <TableHead className="text-slate-300">Hoạt động cuối</TableHead>
-                <TableHead className="text-slate-300">Thao tác</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="border-purple-500/10 hover:bg-slate-700/30">
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-bold text-white">
-                          {user.name.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">{user.name}</p>
-                        <p className="text-sm text-slate-400">{user.email}</p>
-                        <p className="text-xs text-slate-500 flex items-center">
-                          <Phone className="w-3 h-3 mr-1" />
-                          {user.phone}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant="outline" 
-                      className={`${
-                        user.role === 'ADMIN' ? 'border-purple-500/30 text-purple-400' :
-                        user.role === 'TEACHER' ? 'border-blue-500/30 text-blue-400' :
-                        user.role === 'STUDENT' ? 'border-green-500/30 text-green-400' :
-                        'border-yellow-500/30 text-yellow-400'
-                      }`}
-                    >
-                      {roleLabels[user.role as keyof typeof roleLabels]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant="outline" 
-                      className={statusColors[user.status as keyof typeof statusColors]}
-                    >
-                      {statusLabels[user.status as keyof typeof statusLabels]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-slate-300">
-                    {user.classroomCount} lớp
-                  </TableCell>
-                  <TableCell className="text-slate-300">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1 text-slate-400" />
-                      {new Date(user.joinDate).toLocaleDateString('vi-VN')}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-slate-300">
-                    {new Date(user.lastActive).toLocaleDateString('vi-VN')}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-slate-800 border-purple-500/20">
-                        <DropdownMenuLabel className="text-white">Thao tác</DropdownMenuLabel>
-                        <DropdownMenuSeparator className="bg-purple-500/20" />
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setIsEditDialogOpen(true);
-                          }}
-                          className="text-slate-300 hover:bg-purple-500/20 hover:text-white"
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Chỉnh sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleToggleStatus(user.id)}
-                          className="text-slate-300 hover:bg-purple-500/20 hover:text-white"
-                        >
-                          {user.status === 'active' ? (
-                            <>
-                              <UserX className="w-4 h-4 mr-2" />
-                              Vô hiệu hóa
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="w-4 h-4 mr-2" />
-                              Kích hoạt
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-purple-500/20" />
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-400 hover:bg-red-500/20 hover:text-red-300"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Xóa
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader className="w-6 h-6 text-purple-400 animate-spin" />
+              <span className="ml-2 text-slate-400">Đang tải dữ liệu...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-purple-500/20">
+                    <TableHead className="text-slate-300">Email</TableHead>
+                    <TableHead className="text-slate-300">Trạng thái</TableHead>
+                    <TableHead className="text-slate-300">Email xác thực</TableHead>
+                    <TableHead className="text-slate-300">Ngày tạo</TableHead>
+                    <TableHead className="text-slate-300">Đăng nhập cuối</TableHead>
+                    <TableHead className="text-slate-300">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.id} className="border-purple-500/10 hover:bg-slate-700/30">
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-bold text-white">
+                                {user.email.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-white">{user.email}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              user.status === 'ACTIVE'
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                : user.status === 'INACTIVE'
+                                  ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                                  : 'bg-red-500/20 text-red-400 border-red-500/30'
+                            }
+                          >
+                            {user.status === 'ACTIVE' ? 'Hoạt động' : user.status === 'INACTIVE' ? 'Không hoạt động' : 'Tạm khóa'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={user.emailVerified ? 'border-green-500/30 text-green-400' : 'border-red-500/30 text-red-400'}>
+                            {user.emailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-1 text-slate-400" />
+                            {new Date(user.createdAt).toLocaleDateString('vi-VN')}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-slate-300">
+                          {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString('vi-VN') : 'Chưa đăng nhập'}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-slate-800 border-purple-500/20">
+                              <DropdownMenuLabel className="text-white">Thao tác</DropdownMenuLabel>
+                              <DropdownMenuSeparator className="bg-purple-500/20" />
+                              <DropdownMenuItem
+                                onClick={() => handleToggleStatus(user.id)}
+                                className="text-slate-300 hover:bg-purple-500/20 hover:text-white"
+                              >
+                                {user.status === 'ACTIVE' ? (
+                                  <>
+                                    <UserX className="w-4 h-4 mr-2" />
+                                    Vô hiệu hóa
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="w-4 h-4 mr-2" />
+                                    Kích hoạt
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-purple-500/20" />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Xóa
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-slate-400">
+                        Không có users nào
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

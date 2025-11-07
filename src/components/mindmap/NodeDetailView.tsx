@@ -326,55 +326,55 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                 </div>
               ) : (
                 concepts.map((concept) => (
-                  <Card key={concept.id} className="border-2 border-purple-200 hover:border-purple-400 transition-all">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
+                  <Card key={concept.id} className="border-2 border-purple-200 hover:border-purple-400 transition-all bg-white">
+                    <CardHeader className="pb-3 bg-white">
+                      <CardTitle className="text-lg flex items-center gap-2 text-gray-900">
                         <BookOpen className="h-5 w-5 text-purple-600" />
-                        {concept.conceptName}
+                        {concept.name}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 bg-white">
                       <div>
-                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Định nghĩa:</h4>
-                        <LatexPreview content={concept.definition} className="text-sm text-gray-600" />
+                        <h4 className="font-semibold text-sm text-gray-900 mb-1">Định nghĩa:</h4>
+                        <LatexPreview content={concept.definition} className="text-sm text-gray-800" />
                       </div>
                       
                       {concept.explanation && (
                         <div>
-                          <h4 className="font-semibold text-sm text-gray-700 mb-1">Giải thích:</h4>
-                          <LatexPreview content={concept.explanation} className="text-sm text-gray-600" />
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Giải thích:</h4>
+                          <LatexPreview content={concept.explanation} className="text-sm text-gray-800" />
                         </div>
                       )}
 
-                      {concept.keyPoints && concept.keyPoints.length > 0 && (
+                      {concept.keyPoints && concept.keyPoints.trim() && (
                         <div>
-                          <h4 className="font-semibold text-sm text-gray-700 mb-1">Điểm chính:</h4>
-                          <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                            {concept.keyPoints.map((point, idx) => (
-                              <li key={idx}><LatexPreview content={point} className="inline" /></li>
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Điểm chính:</h4>
+                          <ul className="list-disc list-inside text-sm text-gray-800 space-y-1">
+                            {concept.keyPoints.split('\n').filter(p => p.trim()).map((point, idx) => (
+                              <li key={idx}><LatexPreview content={point} className="inline text-gray-800" /></li>
                             ))}
                           </ul>
                         </div>
                       )}
 
-                      {concept.examples && concept.examples.length > 0 && (
+                      {concept.examples && concept.examples.trim() && (
                         <div>
-                          <h4 className="font-semibold text-sm text-gray-700 mb-1">Ví dụ:</h4>
-                          <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                            {concept.examples.map((example, idx) => (
-                              <li key={idx}><LatexPreview content={example} className="inline" /></li>
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Ví dụ:</h4>
+                          <ul className="list-disc list-inside text-sm text-gray-800 space-y-1">
+                            {concept.examples.split('\n').filter(e => e.trim()).map((example, idx) => (
+                              <li key={idx}><LatexPreview content={example} className="inline text-gray-800" /></li>
                             ))}
                           </ul>
                         </div>
                       )}
 
                       {concept.tips && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
                           <div className="flex items-start gap-2">
-                            <Lightbulb className="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <Lightbulb className="h-4 w-4 text-yellow-700 flex-shrink-0 mt-0.5" />
                             <div>
-                              <h4 className="font-semibold text-sm text-yellow-900 mb-1">Mẹo:</h4>
-                              <LatexPreview content={concept.tips} className="text-sm text-yellow-800" />
+                              <h4 className="font-semibold text-sm text-gray-900 mb-1">Mẹo:</h4>
+                              <LatexPreview content={concept.tips} className="text-sm text-gray-800" />
                             </div>
                           </div>
                         </div>
@@ -406,42 +406,53 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                 </div>
               ) : (
                 formulas.map((formula) => (
-                  <Card key={formula.id} className="border-2 border-cyan-200 hover:border-cyan-400 transition-all">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
+                  <Card key={formula.id} className="border-2 border-cyan-200 hover:border-cyan-400 transition-all bg-white">
+                    <CardHeader className="pb-3 bg-white">
+                      <CardTitle className="text-lg flex items-center gap-2 text-gray-900">
                         <Calculator className="h-5 w-5 text-cyan-600" />
-                        {formula.formulaName}
+                        {formula.name}
                         {formula.isPrimary && (
                           <Badge className="bg-cyan-500">Chính</Badge>
                         )}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="bg-gray-50 rounded-lg p-4">
+                    <CardContent className="space-y-3 bg-white">
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <LatexPreview 
                           content={formula.formulaLatex || formula.formulaText} 
-                          className="text-center text-lg"
+                          className="text-center text-lg text-gray-900"
                         />
                       </div>
 
-                      {formula.variables && Object.keys(formula.variables).length > 0 && (
+                      {formula.description && formula.description.trim() && (
                         <div>
-                          <h4 className="font-semibold text-sm text-gray-700 mb-2">Biến số:</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {Object.entries(formula.variables).map(([key, value]) => (
-                              <div key={key} className="bg-blue-50 rounded p-2">
-                                <span className="font-mono font-semibold">{key}</span>
-                                <span className="text-gray-600 text-sm ml-2">= {value}</span>
-                              </div>
-                            ))}
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Mô tả:</h4>
+                          <LatexPreview content={formula.description} className="text-sm text-gray-800" />
+                        </div>
+                      )}
+
+                      {formula.variables && formula.variables.trim() && (
+                        <div>
+                          <h4 className="font-semibold text-sm text-gray-900 mb-2">Biến số:</h4>
+                          <div className="bg-blue-50 rounded p-3 border border-blue-200">
+                            <LatexPreview content={formula.variables} className="text-sm text-gray-900" />
+                          </div>
+                        </div>
+                      )}
+
+                      {formula.usageExample && formula.usageExample.trim() && (
+                        <div>
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Ví dụ sử dụng:</h4>
+                          <div className="bg-green-50 rounded p-3 border border-green-200">
+                            <LatexPreview content={formula.usageExample} className="text-sm text-gray-800" />
                           </div>
                         </div>
                       )}
 
                       {formula.conditions && (
                         <div>
-                          <h4 className="font-semibold text-sm text-gray-700 mb-1">Điều kiện:</h4>
-                          <LatexPreview content={formula.conditions} className="text-sm text-gray-600" />
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Điều kiện:</h4>
+                          <LatexPreview content={formula.conditions} className="text-sm text-gray-800" />
                         </div>
                       )}
                     </CardContent>
@@ -480,35 +491,42 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                 </div>
               ) : (
                 exercises.map((exercise, index) => (
-                  <Card key={exercise.id} className="border-2 border-pink-200 hover:border-pink-400 transition-all">
-                    <CardHeader className="pb-3">
+                  <Card key={exercise.id} className="border-2 border-pink-200 hover:border-pink-400 transition-all bg-white">
+                    <CardHeader className="pb-3 bg-white">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2">
+                        <CardTitle className="text-lg flex items-center gap-2 text-gray-900">
                           <FileQuestion className="h-5 w-5 text-pink-600" />
                           Bài tập {index + 1}
                         </CardTitle>
                         <div className="flex gap-2">
-                          <Badge className={getDifficultyColor(exercise.difficultyLevel)}>
-                            {getDifficultyLabel(exercise.difficultyLevel)}
+                          <Badge className={getDifficultyColor(exercise.difficulty)}>
+                            {getDifficultyLabel(exercise.difficulty)}
                           </Badge>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="text-gray-900">
                             {getCognitiveLabel(exercise.cognitiveLevel)}
                           </Badge>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 bg-white">
                       <div>
-                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Câu hỏi:</h4>
-                        <LatexPreview content={exercise.question} className="text-sm text-gray-600" />
+                        <h4 className="font-semibold text-sm text-gray-900 mb-1">Câu hỏi:</h4>
+                        <LatexPreview content={exercise.question} className="text-sm text-gray-800" />
                       </div>
+
+                      {exercise.answer && exercise.answer.trim() && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Đáp án:</h4>
+                          <LatexPreview content={exercise.answer} className="text-sm text-gray-800" />
+                        </div>
+                      )}
 
                       {exercise.hints && exercise.hints.length > 0 && (
                         <div>
-                          <h4 className="font-semibold text-sm text-gray-700 mb-1">Gợi ý:</h4>
-                          <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Gợi ý:</h4>
+                          <ul className="list-disc list-inside text-sm text-gray-800 space-y-1">
                             {exercise.hints.map((hint, idx) => (
-                              <li key={idx}><LatexPreview content={hint} className="inline" /></li>
+                              <li key={idx}><LatexPreview content={hint} className="inline text-gray-800" /></li>
                             ))}
                           </ul>
                         </div>
@@ -516,22 +534,15 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
 
                       {exercise.solution && (
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <h4 className="font-semibold text-sm text-green-900 mb-1">Lời giải:</h4>
-                          <LatexPreview content={exercise.solution} className="text-sm text-green-800" />
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1">Lời giải:</h4>
+                          <LatexPreview content={exercise.solution} className="text-sm text-gray-800" />
                         </div>
                       )}
 
                       {exercise.estimatedTime && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 text-sm text-gray-800">
                           <span className="font-semibold">Thời gian ước tính:</span>
                           <span>{exercise.estimatedTime} phút</span>
-                        </div>
-                      )}
-
-                      {exercise.points && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="font-semibold">Điểm:</span>
-                          <span>{exercise.points}</span>
                         </div>
                       )}
                     </CardContent>

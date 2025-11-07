@@ -12,6 +12,9 @@ import { Brain, Save, Download, Share, Edit, Trash2, Plus, Minus, X, Sparkles, Z
 import { mindmapService } from '@/lib/services/mindmapService';
 import NodeDetailView from './NodeDetailView';
 import ExerciseGeneratorForm from './ExerciseGeneratorForm';
+import ConceptGeneratorForm from './ConceptGeneratorForm';
+import FormulaGeneratorForm from './FormulaGeneratorForm';
+import type { ConceptResponse, FormulaResponse, ExerciseResponse } from '@/lib/dto';
 
 // Backend node structure
 interface BackendNode {
@@ -87,17 +90,21 @@ interface MindmapEditorProps {
 }
 
 // Convert backend nodes to frontend format
-const convertBackendNode = (backendNode: any): MindmapNode => {
+const convertBackendNode = (backendNode: any, nodeTypeColors: Record<string, string>): MindmapNode => {
+  // Get color based on node type, fallback to backend color or default purple
+  const nodeType = backendNode.nodeType || 'CONCEPT';
+  const typeColor = nodeTypeColors[nodeType] || nodeTypeColors[nodeType.toLowerCase()] || '#8B5CF6';
+  
   return {
     id: backendNode.id?.toString() || `node_${Date.now()}`,
     label: backendNode.title || backendNode.label || 'Untitled',
     x: backendNode.positionX || backendNode.x || 400,
     y: backendNode.positionY || backendNode.y || 300,
-    color: backendNode.backgroundColor || backendNode.color || '#8B5CF6',
+    color: typeColor,  // Use color based on node type
     size: backendNode.width ? backendNode.width / 2 : 30,
     level: backendNode.level || 0,
     content: backendNode.content || '',
-    nodeType: backendNode.nodeType || 'CONCEPT',
+    nodeType: nodeType,
     exercises: [],
     backendId: backendNode.id,
     parentNodeId: backendNode.parentNodeId
@@ -174,17 +181,28 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
   const [showNodeDetails, setShowNodeDetails] = useState(false);
   const [detailsNode, setDetailsNode] = useState<MindmapNode | null>(null);
   const [showExerciseGenerator, setShowExerciseGenerator] = useState(false);
+  const [showConceptGenerator, setShowConceptGenerator] = useState(false);
+  const [showFormulaGenerator, setShowFormulaGenerator] = useState(false);
   const [isLoadingNodes, setIsLoadingNodes] = useState(true);
+  
+  // Store node entity data (concepts, formulas, exercises)
+  const [nodeConcepts, setNodeConcepts] = useState<Record<number, ConceptResponse[]>>({});
+  const [nodeFormulas, setNodeFormulas] = useState<Record<number, FormulaResponse[]>>({});
+  const [nodeExercises, setNodeExercises] = useState<Record<number, ExerciseResponse[]>>({});
 
   // Galaxy theme colors - more vibrant
   const nodeTypeColors: Record<string, string> = {
-    concept: '#8B5CF6',     // Purple
-    formula: '#06B6D4',     // Cyan
+    concept: '#8B5CF6',     // Purple - Khái niệm
+    formula: '#06B6D4',     // Cyan - Công thức (xanh)
     example: '#F59E0B',     // Amber
-    exercise: '#EC4899',    // Pink
-    CONCEPT: '#8B5CF6',     // Purple
-    FORMULA: '#06B6D4',     // Cyan
-    EXERCISE: '#EC4899',    // Pink
+    exercise: '#EC4899',    // Pink - Bài tập (hồng)
+    center: '#EAB308',      // Yellow - Node trung tâm (vàng)
+    root: '#EAB308',        // Yellow - Node root (vàng)
+    CONCEPT: '#8B5CF6',     // Purple - Khái niệm (tím)
+    FORMULA: '#06B6D4',     // Cyan - Công thức (xanh)
+    EXERCISE: '#EC4899',    // Pink - Bài tập (hồng)
+    CENTER: '#EAB308',      // Yellow - Node trung tâm (vàng)
+    ROOT: '#EAB308',        // Yellow - Node root (vàng)
   };
 
   // Load nodes from backend when component mounts
@@ -261,7 +279,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
 
         if (backendNodes && backendNodes.length > 0) {
           // Convert nodes to frontend format
-          const convertedNodes = backendNodes.map(convertBackendNode);
+          const convertedNodes = backendNodes.map(node => convertBackendNode(node, nodeTypeColors));
           setNodes(convertedNodes);
 
           // Create edges from parent-child relationships
@@ -434,6 +452,8 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
         // Find parent from edges (edges use frontend node IDs)
         const parentEdge = edges.find(e => e.target === node.id);
         const parentNode = parentEdge ? nodes.find(n => n.id === parentEdge.source) : null;
+
+        console.log(`[MindmapEditor] Converting node: id=${node.id}, backendId=${node.backendId}, label=${node.label}`);
 
         // Map frontend nodeType to backend NodeType enum
         const mapNodeType = (frontendType?: string): string => {
@@ -992,6 +1012,34 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
               <Sparkles className="h-4 w-4 mr-2" />
               Tạo bài tập AI
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (selectedNode) {
+                  setShowConceptGenerator(true);
+                }
+              }}
+              disabled={!selectedNode}
+              className="bg-purple-500/20 border-purple-400/30 text-purple-300 hover:bg-purple-500/30"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Tạo khái niệm AI
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (selectedNode) {
+                  setShowFormulaGenerator(true);
+                }
+              }}
+              disabled={!selectedNode}
+              className="bg-cyan-500/20 border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/30"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Tạo công thức AI
+            </Button>
 
             <div className="flex items-center gap-2 ml-auto">
               <Button
@@ -1251,7 +1299,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
       {/* Node Details Modal */}
       {showNodeDetails && detailsNode && (
         <NodeDetailView
-          nodeId={detailsNode.backendId ? detailsNode.backendId.toString() : detailsNode.id.replace('node_', '').replace('root', '')}
+          nodeId={detailsNode.backendId?.toString() || ''}
           nodeName={detailsNode.label}
           nodeType={detailsNode.nodeType}
           onClose={() => {
@@ -1268,10 +1316,56 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
           nodeName={nodes.find(n => n.id === selectedNode)?.label || 'Node'}
           onSuccess={(exercises) => {
             console.log('Generated exercises:', exercises);
-            loadNodesFromBackend(); // Reload to get exercises
+            // Reload node data to get new exercises
+            const nodeBackendId = nodes.find(n => n.id === selectedNode)?.backendId;
+            if (nodeBackendId) {
+              mindmapService.getExercisesByNode(nodeBackendId).then((exercises: ExerciseResponse[]) => {
+                setNodeExercises(prev => ({ ...prev, [nodeBackendId]: exercises }));
+              }).catch(console.error);
+            }
             setShowExerciseGenerator(false);
           }}
           onClose={() => setShowExerciseGenerator(false)}
+        />
+      )}
+
+      {/* Concept Generator Modal */}
+      {showConceptGenerator && selectedNode && (
+        <ConceptGeneratorForm
+          nodeId={parseInt(nodes.find(n => n.id === selectedNode)?.backendId?.toString() || selectedNode)}
+          nodeName={nodes.find(n => n.id === selectedNode)?.label || 'Node'}
+          onSuccess={(concepts) => {
+            console.log('Generated concepts:', concepts);
+            // Reload node data to get new concepts
+            const nodeBackendId = nodes.find(n => n.id === selectedNode)?.backendId;
+            if (nodeBackendId) {
+              mindmapService.getConceptsByNode(nodeBackendId).then((concepts: ConceptResponse[]) => {
+                setNodeConcepts(prev => ({ ...prev, [nodeBackendId]: concepts }));
+              }).catch(console.error);
+            }
+            setShowConceptGenerator(false);
+          }}
+          onClose={() => setShowConceptGenerator(false)}
+        />
+      )}
+
+      {/* Formula Generator Modal */}
+      {showFormulaGenerator && selectedNode && (
+        <FormulaGeneratorForm
+          nodeId={parseInt(nodes.find(n => n.id === selectedNode)?.backendId?.toString() || selectedNode)}
+          nodeName={nodes.find(n => n.id === selectedNode)?.label || 'Node'}
+          onSuccess={(formulas) => {
+            console.log('Generated formulas:', formulas);
+            // Reload node data to get new formulas
+            const nodeBackendId = nodes.find(n => n.id === selectedNode)?.backendId;
+            if (nodeBackendId) {
+              mindmapService.getFormulasByNode(nodeBackendId).then((formulas: FormulaResponse[]) => {
+                setNodeFormulas(prev => ({ ...prev, [nodeBackendId]: formulas }));
+              }).catch(console.error);
+            }
+            setShowFormulaGenerator(false);
+          }}
+          onClose={() => setShowFormulaGenerator(false)}
         />
       )}
     </div>
