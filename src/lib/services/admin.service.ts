@@ -65,7 +65,10 @@ class AdminService {
 
     // Add token to requests
     this.api.interceptors.request.use((config) => {
-      const token = localStorage.getItem("access_token");
+      const token =
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -73,7 +76,10 @@ class AdminService {
     });
 
     this.classroomApi.interceptors.request.use((config) => {
-      const token = localStorage.getItem("access_token");
+      const token =
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -154,7 +160,7 @@ class AdminService {
    */
   async deleteUser(userId: string): Promise<void> {
     try {
-      await this.api.delete(`/admin/users/${userId}`);
+      await this.api.delete(`/users/${userId}`);
     } catch (error) {
       console.error(`Error deleting user ${userId}:`, error);
       throw error;
@@ -169,9 +175,10 @@ class AdminService {
     newStatus: "ACTIVE" | "INACTIVE" | "SUSPENDED"
   ): Promise<UserResponse> {
     try {
+      const isActive = newStatus === "ACTIVE";
       const response = await this.api.patch<ApiResponse<UserResponse>>(
         `/users/${userId}/status`,
-        { status: newStatus }
+        { active: isActive }
       );
       return response.data.result;
     } catch (error) {

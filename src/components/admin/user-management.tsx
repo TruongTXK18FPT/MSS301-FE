@@ -6,7 +6,6 @@ import {
   Filter,
   Plus,
   Edit,
-  Trash2,
   MoreVertical,
   UserCheck,
   UserX,
@@ -14,7 +13,8 @@ import {
   Phone,
   Calendar,
   Shield,
-  Loader
+  Loader,
+  Eye
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,6 +76,7 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -290,18 +291,19 @@ export default function UserManagement() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-purple-500/20">
+                    <TableHead className="text-slate-300 w-20 text-center">STT</TableHead>
                     <TableHead className="text-slate-300">Email</TableHead>
                     <TableHead className="text-slate-300">Trạng thái</TableHead>
-                    <TableHead className="text-slate-300">Email xác thực</TableHead>
-                    <TableHead className="text-slate-300">Ngày tạo</TableHead>
-                    <TableHead className="text-slate-300">Đăng nhập cuối</TableHead>
                     <TableHead className="text-slate-300">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.length > 0 ? (
-                    filteredUsers.map((user) => (
+                    filteredUsers.map((user, idx) => (
                       <TableRow key={user.id} className="border-purple-500/10 hover:bg-slate-700/30">
+                        <TableCell className="text-slate-300 text-center">
+                          {currentPage * pageSize + idx + 1}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
@@ -328,20 +330,7 @@ export default function UserManagement() {
                             {user.status === 'ACTIVE' ? 'Hoạt động' : user.status === 'INACTIVE' ? 'Không hoạt động' : 'Tạm khóa'}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={user.emailVerified ? 'border-green-500/30 text-green-400' : 'border-red-500/30 text-red-400'}>
-                            {user.emailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-slate-300">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-1 text-slate-400" />
-                            {new Date(user.createdAt).toLocaleDateString('vi-VN')}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-300">
-                          {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString('vi-VN') : 'Chưa đăng nhập'}
-                        </TableCell>
+                        
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -351,6 +340,14 @@ export default function UserManagement() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-slate-800 border-purple-500/20">
                               <DropdownMenuLabel className="text-white">Thao tác</DropdownMenuLabel>
+                              <DropdownMenuSeparator className="bg-purple-500/20" />
+                              <DropdownMenuItem
+                                onClick={() => { setSelectedUser(user); setIsDetailDialogOpen(true); }}
+                                className="text-slate-300 hover:bg-purple-500/20 hover:text-white"
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Xem chi tiết
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-purple-500/20" />
                               <DropdownMenuItem
                                 onClick={() => handleToggleStatus(user.id)}
@@ -368,14 +365,6 @@ export default function UserManagement() {
                                   </>
                                 )}
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-purple-500/20" />
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="text-red-400 hover:bg-red-500/20 hover:text-red-300"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Xóa
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -390,6 +379,26 @@ export default function UserManagement() {
                   )}
                 </TableBody>
               </Table>
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between mt-4">
+                <Button
+                  variant="outline"
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+                >
+                  Trang trước
+                </Button>
+                <div className="text-slate-400">Trang {currentPage + 1}</div>
+                <Button
+                  variant="outline"
+                  disabled={(currentPage + 1) * pageSize >= totalUsers}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+                >
+                  Trang sau
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -541,6 +550,89 @@ export default function UserManagement() {
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
             >
               Cập nhật
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail User Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="bg-gradient-to-br from-slate-900/90 via-indigo-900/60 to-purple-900/60 backdrop-blur-xl border border-purple-500/30 text-white shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-pink-300">Chi tiết User</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Thông tin cơ bản của người dùng
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Top summary with avatar */}
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold">
+                {selectedUser?.email?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <div className="text-white font-semibold">{selectedUser?.email}</div>
+              <div className="text-slate-400 text-sm">ID tạm: #{selectedUser ? currentPage * pageSize + (users.findIndex(u => u.id === selectedUser.id) + 1) : '-'}</div>
+            </div>
+          </div>
+
+          {/* Details grid */}
+          <div className="grid md:grid-cols-2 gap-4 py-2">
+            <div className="rounded-lg border border-purple-500/20 bg-slate-800/30 p-4">
+              <p className="text-slate-400 text-sm">STT</p>
+              <p className="text-lg font-semibold">
+                {selectedUser ? (currentPage * pageSize + (users.findIndex(u => u.id === selectedUser.id) + 1)) : '-'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-purple-500/20 bg-slate-800/30 p-4">
+              <p className="text-slate-400 text-sm">Trạng thái</p>
+              <div className="mt-1">
+                <Badge
+                  variant="outline"
+                  className={
+                    selectedUser?.status === 'ACTIVE'
+                      ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                      : selectedUser?.status === 'INACTIVE'
+                        ? 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+                        : 'bg-red-500/20 text-red-300 border-red-500/30'
+                  }
+                >
+                  {selectedUser?.status === 'ACTIVE' ? 'Hoạt động' : selectedUser?.status === 'INACTIVE' ? 'Không hoạt động' : 'Tạm khóa'}
+                </Badge>
+              </div>
+            </div>
+            <div className="rounded-lg border border-purple-500/20 bg-slate-800/30 p-4 md:col-span-2">
+              <p className="text-slate-400 text-sm">Email xác thực</p>
+              <div className="mt-1">
+                <Badge variant="outline" className={selectedUser?.emailVerified ? 'border-green-500/30 text-green-300' : 'border-red-500/30 text-red-300'}>
+                  {selectedUser?.emailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
+                </Badge>
+              </div>
+            </div>
+            <div className="rounded-lg border border-purple-500/20 bg-slate-800/30 p-4">
+              <p className="text-slate-400 text-sm">Ngày tạo</p>
+              <p className="text-white flex items-center mt-1">
+                <Calendar className="w-4 h-4 mr-1 text-slate-400" />
+                {selectedUser ? new Date(selectedUser.createdAt).toLocaleDateString('vi-VN') : '-'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-purple-500/20 bg-slate-800/30 p-4">
+              <p className="text-slate-400 text-sm">Đăng nhập cuối</p>
+              <p className="text-white mt-1">
+                {selectedUser?.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleDateString('vi-VN') : 'Chưa đăng nhập'}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDetailDialogOpen(false)}
+              className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+            >
+              Đóng
             </Button>
           </DialogFooter>
         </DialogContent>
