@@ -508,13 +508,14 @@ export default function ProfileCompletePage() {
                       onBlur={() => setTimeout(() => setShowProvinceDropdown(false), 200)}
                       className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400"
                     />
-                    {(showProvinceDropdown || provinceSearch) && (
+                    {showProvinceDropdown && (
                       <div className="absolute top-full left-0 right-0 z-10 bg-black/90 border border-purple-500/30 rounded-md max-h-60 overflow-y-auto">
                         {filteredProvinces.map((province) => (
                           <div
                             key={province.id}
                             className="px-3 py-2 hover:bg-purple-500/20 cursor-pointer text-white"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault();
                             handleInputChange('province', province.id);
                             setProvinceSearch(province.name);
                             setShowProvinceDropdown(false);
@@ -544,13 +545,14 @@ export default function ProfileCompletePage() {
                     disabled={!formData.province}
                     className="bg-black/30 border-purple-500/30 text-white placeholder:text-gray-400 disabled:opacity-50"
                   />
-                  {formData.province && (showWardDropdown || wardSearch) && (
+                  {formData.province && showWardDropdown && (
                     <div className="absolute top-full left-0 right-0 z-10 bg-black/90 border border-purple-500/30 rounded-md max-h-60 overflow-y-auto">
                       {filteredWards.map((ward) => (
                         <div
                           key={ward.id}
                           className="px-3 py-2 hover:bg-purple-500/20 cursor-pointer text-white"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault();
                             handleInputChange('ward', ward.id);
                             setWardSearch(ward.name);
                             setShowWardDropdown(false);

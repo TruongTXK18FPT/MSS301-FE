@@ -19,7 +19,6 @@ const schema = z.object({
   name: z.string().min(1, "Vui lòng nhập họ tên"),
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
-  relationship: z.string().min(1, "Vui lòng nhập quan hệ"),
   phone: z.string().min(9, "Số điện thoại không hợp lệ"),
   confirmPassword: z.string().min(6, "Vui lòng xác nhận mật khẩu"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -208,26 +207,6 @@ export default function GuardianRegisterPage() {
               {errors.confirmPassword && <p className="text-sm text-red-400 flex items-center gap-1">
                 <span className="text-red-500">⚠</span>
                 {errors.confirmPassword.message}
-              </p>}
-            </div>
-
-            {/* Quan hệ */}
-            <div className="space-y-2">
-              <Label className="text-pink-200 font-medium flex items-center gap-2">
-                <Heart className="size-4" />
-                Mối quan hệ
-              </Label>
-              <div className="relative">
-                <Input 
-                  placeholder="Cha/Mẹ/Người giám hộ" 
-                  {...register('relationship')}
-                  className="bg-black/40 border-purple-400/30 text-white rounded-xl backdrop-blur-sm focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 hover:border-purple-400/50 pl-4"
-                />
-                <Heart className="absolute right-3 top-1/2 transform -translate-y-1/2 size-4 text-purple-400 opacity-50" />
-              </div>
-              {errors.relationship && <p className="text-sm text-red-400 flex items-center gap-1">
-                <span className="text-red-500">⚠</span>
-                {errors.relationship.message}
               </p>}
             </div>
 

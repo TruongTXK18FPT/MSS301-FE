@@ -124,7 +124,7 @@ export default function AddStudentModal({ onStudentAdded }: AddStudentModalProps
                 type="email"
                 value={studentEmail}
                 onChange={(e) => setStudentEmail(e.target.value)}
-                placeholder="hoangphung432004@gmail.com"
+                placeholder="Nhập email học sinh"
                 className="pl-10 bg-black/20 border-purple-500/30 text-white placeholder:text-purple-300"
                 disabled={loading || success}
               />

@@ -20,10 +20,11 @@ interface PendingTeacher {
 }
 
 interface TeacherDetails {
-  id: string;
-  userId: string;
+  id: number;
+  userId: number;
   email: string;
   fullName: string;
+  dob?: string;
   phoneNumber?: string;
   address?: string;
   department?: string;
@@ -34,6 +35,7 @@ interface TeacherDetails {
   approvalStatus?: string;
   rejectionReason?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export default function TeacherRegistrationsPage() {
@@ -43,6 +45,9 @@ export default function TeacherRegistrationsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [rejectingTeacherId, setRejectingTeacherId] = useState<string | null>(null);
+  const [rejectingTeacherEmail, setRejectingTeacherEmail] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,7 +79,12 @@ export default function TeacherRegistrationsPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setSelectedTeacher(data.result);
+        if (data.code === 1000 && data.result) {
+          setSelectedTeacher(data.result);
+          setShowDetailsDialog(true);
+        } else {
+          toast({ description: 'Không tìm thấy thông tin giáo viên', variant: 'destructive' });
+        }
       } else {
         toast({ description: 'Lỗi khi tải thông tin giáo viên', variant: 'destructive' });
       }
@@ -123,6 +133,8 @@ export default function TeacherRegistrationsPage() {
         fetchPendingTeachers();
         setShowRejectDialog(false);
         setRejectionReason('');
+        setRejectingTeacherId(null);
+        setRejectingTeacherEmail('');
       } else {
         toast({ description: response.data.message || 'Lỗi khi từ chối đơn', variant: 'destructive' });
       }
@@ -213,7 +225,7 @@ export default function TeacherRegistrationsPage() {
                   </div>
                   
                   <div className="flex space-x-3">
-                    <Dialog>
+                    <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
                       <DialogTrigger asChild>
                         <Button
                           variant="outline"
@@ -235,12 +247,12 @@ export default function TeacherRegistrationsPage() {
                             Thông tin chi tiết của đơn đăng ký giáo viên
                           </DialogDescription>
                         </DialogHeader>
-                        {selectedTeacher && (
+                        {selectedTeacher ? (
                           <div className="space-y-4 text-white">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <p className="text-sm text-gray-400">Họ và tên:</p>
-                                <p className="font-semibold">{selectedTeacher.fullName}</p>
+                                <p className="font-semibold">{selectedTeacher.fullName || 'Chưa cập nhật'}</p>
                               </div>
                               <div>
                                 <p className="text-sm text-gray-400">Email:</p>
@@ -296,11 +308,18 @@ export default function TeacherRegistrationsPage() {
                               </div>
                             )}
                           </div>
+                        ) : (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                          </div>
                         )}
                         <DialogFooter>
                           <Button 
                             variant="outline" 
-                            onClick={() => setSelectedTeacher(null)}
+                            onClick={() => {
+                              setShowDetailsDialog(false);
+                              setSelectedTeacher(null);
+                            }}
                             className="border-gray-500 text-gray-300"
                           >
                             Đóng
@@ -328,7 +347,10 @@ export default function TeacherRegistrationsPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => setSelectedTeacher({ id: teacher.id, email: teacher.email } as TeacherDetails)}
+                          onClick={() => {
+                            setRejectingTeacherId(teacher.id);
+                            setRejectingTeacherEmail(teacher.email);
+                          }}
                         >
                           <XCircle className="h-4 w-4 mr-2" />
                           Từ chối
@@ -338,7 +360,7 @@ export default function TeacherRegistrationsPage() {
                         <DialogHeader>
                           <DialogTitle className="text-white">Từ chối đơn đăng ký giáo viên</DialogTitle>
                           <DialogDescription className="text-gray-300">
-                            Vui lòng nhập lý do từ chối cho giáo viên: {selectedTeacher?.email}
+                            Vui lòng nhập lý do từ chối cho giáo viên: {rejectingTeacherEmail}
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
@@ -359,6 +381,8 @@ export default function TeacherRegistrationsPage() {
                             onClick={() => {
                               setShowRejectDialog(false);
                               setRejectionReason('');
+                              setRejectingTeacherId(null);
+                              setRejectingTeacherEmail('');
                             }}
                             className="border-gray-500 text-gray-300"
                           >
@@ -366,10 +390,10 @@ export default function TeacherRegistrationsPage() {
                           </Button>
                           <Button
                             variant="destructive"
-                            onClick={() => handleReject(selectedTeacher?.id || '')}
-                            disabled={actionLoading === selectedTeacher?.id}
+                            onClick={() => rejectingTeacherId && handleReject(rejectingTeacherId)}
+                            disabled={actionLoading === rejectingTeacherId}
                           >
-                            {actionLoading === selectedTeacher?.id ? (
+                            {actionLoading === rejectingTeacherId ? (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                             ) : null}
                             Từ chối

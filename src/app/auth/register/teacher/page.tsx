@@ -15,14 +15,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { RegisterRequest } from "@/lib/dto/auth";
 import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Sparkles, BookOpen, Award, Phone, Briefcase } from "lucide-react";
 import Link from "next/link";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const schema = z.object({
   name: z.string().min(1, "Vui lòng nhập họ tên"),
   email: z.string().email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
-  department: z.string().min(1, "Vui lòng nhập tổ/bộ môn"),
+  department: z.string().min(1, "Vui lòng chọn bộ môn"),
   specialization: z.string().min(1, "Vui lòng nhập chuyên môn"),
-  yearsOfExperience: z.coerce.number().min(0),
+  yearsOfExperience: z.coerce.number()
+    .min(0, "Số năm kinh nghiệm không thể âm")
+    .max(50, "Số năm kinh nghiệm không hợp lý (tối đa 50 năm)"),
   qualifications: z.string().optional(),
   bio: z.string().optional(),
   phone: z.string().min(9, "Số điện thoại không hợp lệ"),
@@ -40,7 +43,12 @@ export default function TeacherRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { register, handleSubmit, formState: { errors }, setError } = useForm<TeacherForm>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, formState: { errors }, setError, setValue } = useForm<TeacherForm>({ 
+    resolver: zodResolver(schema),
+    defaultValues: {
+      department: '' // Initialize department
+    }
+  });
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
@@ -222,16 +230,18 @@ export default function TeacherRegisterPage() {
             <div className="space-y-2">
               <Label className="text-pink-200 font-medium flex items-center gap-2">
                 <Briefcase className="size-4" />
-                Tổ/Bộ môn
+                Tổ/Bộ môn <span className="text-red-400">*</span>
               </Label>
-              <div className="relative">
-                <Input 
-                  placeholder="Toán/Lý/Hóa..." 
-                  {...register('department')}
-                  className="bg-black/40 border-purple-400/30 text-white rounded-xl backdrop-blur-sm focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 hover:border-purple-400/50 pl-4"
-                />
-                <BookOpen className="absolute right-3 top-1/2 transform -translate-y-1/2 size-4 text-purple-400 opacity-50" />
-              </div>
+              <Select onValueChange={(value) => setValue('department', value)}>
+                <SelectTrigger className="bg-black/40 border-purple-400/30 text-white rounded-xl backdrop-blur-sm focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 hover:border-purple-400/50">
+                  <SelectValue placeholder="Chọn bộ môn" />
+                </SelectTrigger>
+                <SelectContent className="bg-black/95 border-purple-400/30 backdrop-blur-xl">
+                  <SelectItem value="Toán" className="text-white hover:bg-purple-500/20 focus:bg-purple-500/20 cursor-pointer">
+                    Toán
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               {errors.department && <p className="text-sm text-red-400 flex items-center gap-1">
                 <span className="text-red-500">⚠</span>
                 {errors.department.message}
@@ -268,11 +278,17 @@ export default function TeacherRegisterPage() {
                 <Input 
                   type="number" 
                   placeholder="0"
+                  min="0"
+                  max="50"
                   {...register('yearsOfExperience')}
                   className="bg-black/40 border-purple-400/30 text-white rounded-xl backdrop-blur-sm focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 hover:border-purple-400/50 pl-4"
                 />
                 <GraduationCap className="absolute right-3 top-1/2 transform -translate-y-1/2 size-4 text-purple-400 opacity-50" />
               </div>
+              {errors.yearsOfExperience && <p className="text-sm text-red-400 flex items-center gap-1">
+                <span className="text-red-500">⚠</span>
+                {errors.yearsOfExperience.message}
+              </p>}
             </div>
 
             {/* Số điện thoại */}
