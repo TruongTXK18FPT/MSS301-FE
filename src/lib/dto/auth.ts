@@ -40,6 +40,17 @@ export interface VerifyEmailRequest {
   otp: string;
 }
 
+export interface VerifyEmailResponse {
+  userType: string; // STUDENT, TEACHER, GUARDIAN
+  emailVerified: boolean;
+}
+
+export interface OTPResponse {
+  email: string;
+  expiryTime: string; // ISO 8601 format
+  expiryInSeconds: number; // Remaining seconds until expiry
+}
+
 export interface IntrospectResponse {
   valid: boolean;
   email: string;

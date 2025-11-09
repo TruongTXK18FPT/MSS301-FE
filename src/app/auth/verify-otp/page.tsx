@@ -16,41 +16,131 @@ export default function VerifyOTPPage() {
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [countdown, setCountdown] = useState(300); // 5 minutes = 300 seconds
-  const [otpExpiry, setOtpExpiry] = useState(300); // Track OTP expiry
+  const [resendCooldown, setResendCooldown] = useState(0); // 60 seconds cooldown for resend
+  const [otpExpiryTime, setOtpExpiryTime] = useState<Date | null>(null); // OTP expiry time from backend
+  const [remainingSeconds, setRemainingSeconds] = useState(0); // Remaining seconds until OTP expiry
   const email = params.get('email') || '';
 
-  // Countdown timer for OTP expiry
+  // Initialize OTP expiry time from localStorage or fetch from backend
   useEffect(() => {
-    if (otpExpiry > 0) {
-      const timer = setTimeout(() => setOtpExpiry(otpExpiry - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [otpExpiry]);
+    if (!email) return;
 
-  // Countdown timer for resend button
+    const storageKey = `otp_expiry_${email}`;
+    const storedExpiry = localStorage.getItem(storageKey);
+    
+    if (storedExpiry) {
+      const expiryDate = new Date(storedExpiry);
+      // Check if OTP is still valid
+      if (expiryDate > new Date()) {
+        setOtpExpiryTime(expiryDate);
+        return;
+      } else {
+        // OTP expired, clear storage
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    // If no valid expiry time in localStorage, fetch from backend
+    const fetchOTPInfo = async () => {
+      try {
+        const res = await AuthAPI.getCurrentOTPInfo(email);
+        if (res.code === 1000 && res.result) {
+          const expiryTime = new Date(res.result.expiryTime);
+          setOtpExpiryTime(expiryTime);
+          // Save to localStorage
+          localStorage.setItem(storageKey, expiryTime.toISOString());
+        }
+      } catch (error) {
+        // If no OTP found or error, countdown will remain at 0
+        console.error('Error fetching OTP info:', error);
+      }
+    };
+
+    fetchOTPInfo();
+  }, [email]);
+
+  // Real-time countdown for OTP expiry based on backend expiry time
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    if (!otpExpiryTime) return;
+
+    const updateRemaining = () => {
+      const now = new Date();
+      const expiry = new Date(otpExpiryTime);
+      const diff = Math.max(0, Math.floor((expiry.getTime() - now.getTime()) / 1000));
+      
+      setRemainingSeconds(diff);
+      
+      // Save to localStorage
+      if (email) {
+        const storageKey = `otp_expiry_${email}`;
+        localStorage.setItem(storageKey, expiry.toISOString());
+      }
+
+      // Clear storage if expired
+      if (diff === 0 && email) {
+        const storageKey = `otp_expiry_${email}`;
+        localStorage.removeItem(storageKey);
+      }
+    };
+
+    // Update immediately
+    updateRemaining();
+
+    // Update every second
+    const timer = setInterval(updateRemaining, 1000);
+    return () => clearInterval(timer);
+  }, [otpExpiryTime, email]);
+
+  // Countdown timer for resend button (60 seconds = 1 minute)
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
       return () => clearTimeout(timer);
     }
-  }, [countdown]);
+  }, [resendCooldown]);
 
   const onSubmit = async (otpCode: string) => {
+    // Validate OTP code before sending
+    if (!otpCode || otpCode.trim().length !== 6) {
+      toast({ 
+        description: '❌ Vui lòng nhập đầy đủ 6 số OTP', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+    
+    if (!email || email.trim().length === 0) {
+      toast({ 
+        description: '❌ Email không hợp lệ', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+    
     setIsVerifying(true);
     try {
-      const res = await AuthAPI.verifyEmail({ email, otpCode });
+      console.log('Verifying OTP - email:', email, 'otpCode:', otpCode);
+      const res = await AuthAPI.verifyEmail({ email, otp: otpCode });
       if (res.code === 1000) {
-        // Check if this is a teacher registration
+        // Show success message
         toast({ 
           description: '✅ Email đã được xác minh thành công!',
           className: 'bg-green-500/20 border-green-500/50'
         });
-        // For teachers, show a message that they need to wait for admin approval
-        toast({ 
-          description: 'Đơn đăng ký giáo viên của bạn đang được quản trị viên xem xét. Bạn sẽ nhận được email khi đơn được duyệt.',
-          className: 'bg-blue-500/20 border-blue-500/50'
-        });
+        
+        // Only show teacher approval message if userType is TEACHER
+        const userType = res.result?.userType;
+        if (userType === 'TEACHER') {
+          toast({ 
+            description: 'Đơn đăng ký giáo viên của bạn đang được quản trị viên xem xét. Bạn sẽ nhận được email khi đơn được duyệt.',
+            className: 'bg-blue-500/20 border-blue-500/50'
+          });
+        }
+        
+        // Clear OTP expiry from localStorage after successful verification
+        const storageKey = `otp_expiry_${email}`;
+        localStorage.removeItem(storageKey);
+        
         setTimeout(() => router.push('/auth/login'), 3000);
       } else {
         toast({ 
@@ -58,10 +148,24 @@ export default function VerifyOTPPage() {
           variant: 'destructive' 
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying OTP:', error);
+      console.error('Error response:', error?.response?.data);
+      
+      // Get error message from backend
+      let errorMessage = '❌ Có lỗi xảy ra khi xác minh OTP';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.code) {
+        // Map error codes to messages
+        const errorCode = error.response.data.code;
+        if (errorCode === 1012) { // INVALID_OTP
+          errorMessage = 'Mã OTP không đúng hoặc đã hết hạn. Vui lòng kiểm tra lại hoặc yêu cầu gửi lại mã mới.';
+        }
+      }
+      
       toast({ 
-        description: '❌ Có lỗi xảy ra khi xác minh OTP', 
+        description: errorMessage, 
         variant: 'destructive' 
       });
     } finally {
@@ -70,18 +174,25 @@ export default function VerifyOTPPage() {
   };
 
   const handleResendOTP = async () => {
-    if (countdown > 0 || isResending) return;
+    if (resendCooldown > 0 || isResending) return;
     
     setIsResending(true);
     try {
-      const res = await AuthAPI.resendOTP(email);
-      if (res.code === 1000) {
+      const res = await AuthAPI.resendEmailVerificationOTP(email);
+      if (res.code === 1000 && res.result) {
+        // Set expiry time from backend response
+        const expiryTime = new Date(res.result.expiryTime);
+        setOtpExpiryTime(expiryTime);
+        
+        // Save to localStorage
+        const storageKey = `otp_expiry_${email}`;
+        localStorage.setItem(storageKey, expiryTime.toISOString());
+        
         toast({ 
-          description: '✅ Mã OTP mới đã được gửi đến email của bạn!',
+          description: '✅ Mã OTP mới đã được gửi đến email của bạn! Mã OTP có hiệu lực trong 5 phút.',
           className: 'bg-green-500/20 border-green-500/50'
         });
-        setCountdown(60); // 60 seconds cooldown
-        setOtpExpiry(300); // Reset OTP expiry to 5 minutes
+        setResendCooldown(60); // 60 seconds (1 minute) cooldown
         setOtp(''); // Clear current OTP input
       } else {
         toast({ 
@@ -122,11 +233,11 @@ export default function VerifyOTPPage() {
       );
     }
     
-    if (countdown > 0) {
+    if (resendCooldown > 0) {
       return (
         <div className="flex items-center gap-2">
           <Clock className="size-4" />
-          Gửi lại sau {countdown}s
+          Gửi lại sau {resendCooldown}s
         </div>
       );
     }
@@ -161,8 +272,13 @@ export default function VerifyOTPPage() {
             Xác thực Email
           </CardTitle>
           <CardDescription className="text-pink-200/80 mt-2">
-            Nhập mã OTP 6 số đã được gửi đến
+            Nhập mã OTP 6 số đã được gửi đến email của bạn
           </CardDescription>
+          <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-400/30 rounded-lg">
+            <p className="text-yellow-300 text-xs text-center font-medium">
+              ⏱️ Mã OTP chỉ có hiệu lực trong 5 phút. Vui lòng nhập mã ngay sau khi nhận được.
+            </p>
+          </div>
           <div className="mt-3 p-2 bg-black/20 rounded-lg border border-purple-400/20">
             <p className="text-cyan-400 font-medium flex items-center justify-center gap-2">
               <Mail className="size-4" />
@@ -179,8 +295,8 @@ export default function VerifyOTPPage() {
               <span className="text-purple-200 font-medium">
                 Mã OTP có hiệu lực trong: 
               </span>
-              <span className={`font-mono font-bold ${getTimerColor(otpExpiry)}`}>
-                {formatTime(otpExpiry)}
+              <span className={`font-mono font-bold ${getTimerColor(remainingSeconds)}`}>
+                {formatTime(remainingSeconds)}
               </span>
             </div>
           </div>
@@ -194,7 +310,7 @@ export default function VerifyOTPPage() {
               className="my-6"
             />
             
-            {otpExpiry === 0 && (
+            {remainingSeconds === 0 && otpExpiryTime && (
               <div className="text-center p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <p className="text-red-400 text-sm font-medium">
                   ⚠️ Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.
@@ -207,7 +323,7 @@ export default function VerifyOTPPage() {
           <Button 
             onClick={() => onSubmit(otp)}
             className="w-full bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
-            disabled={isVerifying || otp.length !== 6 || otpExpiry === 0}
+            disabled={isVerifying || otp.length !== 6 || remainingSeconds === 0}
           >
             {isVerifying ? (
               <div className="flex items-center gap-2">
@@ -239,16 +355,19 @@ export default function VerifyOTPPage() {
             type="button"
             variant="outline"
             onClick={handleResendOTP}
-            disabled={countdown > 0 || isResending}
+            disabled={resendCooldown > 0 || isResending}
             className="w-full border-purple-400/30 hover:border-purple-400/50 hover:bg-purple-500/10 text-purple-400 font-medium py-3 rounded-xl transition-all duration-300"
           >
             {getResendButtonContent()}
           </Button>
 
           {/* Info */}
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-sm text-pink-200/60">
-              Mã OTP sẽ được gửi đến email của bạn và có hiệu lực trong 5 phút
+              Mã OTP sẽ được gửi đến email của bạn
+            </p>
+            <p className="text-xs text-yellow-300/70 font-medium">
+              ⚠️ Lưu ý: Mã OTP chỉ có hiệu lực trong 5 phút. Sau khi hết hạn, bạn cần yêu cầu gửi lại mã mới.
             </p>
           </div>
         </CardContent>

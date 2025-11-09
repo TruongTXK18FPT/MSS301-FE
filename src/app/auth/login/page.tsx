@@ -118,22 +118,29 @@ export default function LoginPage() {
                 router.push("/");
               } else {
                 const message = res.message || "Đăng nhập thất bại";
-                if (message.includes("Email chưa được xác thực")) {
-                  // redirect to OTP page later when created
+                // Check if email is not verified
+                if (message.includes("Email chưa được xác thực") || res.code === 1013) {
+                  toast({ 
+                    description: "Bạn cần xác thực email trước khi đăng nhập", 
+                    variant: "destructive" 
+                  });
                   router.push("/auth/verify-otp?email=" + encodeURIComponent(email));
+                } else {
+                  toast({ description: message, variant: "destructive" });
                 }
-                toast({ description: message, variant: "destructive" });
               }
             } catch (error: any) {
               console.error('Login error:', error);
               console.error('Login error message:', error?.message);
               console.error('Login error response:', error?.response);
+              
+              // Get error message from backend response
               let errorMessage = "Có lỗi xảy ra khi đăng nhập";
               
-              // Priority: Use error message from backend first, then fallback to status codes
-              if (error?.message) {
-                // Use the message directly from backend (now properly localized)
-                console.log('Using error message from backend:', error.message);
+              // Priority: Use error message from backend ApiResponse
+              if (error?.response?.data?.message) {
+                errorMessage = error.response.data.message;
+              } else if (error?.message) {
                 errorMessage = error.message;
               } else if (error?.response?.status === 400) {
                 errorMessage = "Email hoặc mật khẩu không đúng";
@@ -143,7 +150,17 @@ export default function LoginPage() {
                 errorMessage = "Tài khoản không tồn tại";
               }
               
-              toast({ description: errorMessage, variant: "destructive" });
+              // Check if email is not verified
+              const errorCode = error?.response?.data?.code;
+              if (errorCode === 1013 || errorMessage.includes("Email chưa được xác thực")) {
+                toast({ 
+                  description: "Bạn cần xác thực email trước khi đăng nhập", 
+                  variant: "destructive" 
+                });
+                router.push("/auth/verify-otp?email=" + encodeURIComponent(email));
+              } else {
+                toast({ description: errorMessage, variant: "destructive" });
+              }
             } finally {
               setLoading(false);
             }
@@ -229,6 +246,14 @@ export default function LoginPage() {
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-black/30 text-purple-200/80">Hoặc</span>
               </div>
+            </div>
+            
+            {/* Info message for Google login */}
+            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-400/30 rounded-lg">
+              <p className="text-blue-200 text-sm text-center flex items-center justify-center gap-2">
+                <span>ℹ️</span>
+                <span>Đăng nhập Google chỉ áp dụng cho tài khoản học sinh</span>
+              </p>
             </div>
             
             <Button 

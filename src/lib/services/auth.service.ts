@@ -1,6 +1,6 @@
 import { authApi } from './axios';
 import { ApiResponse } from '@/lib/dto/common';
-import { IntrospectResponse, LoginRequest, LoginResponse, RegisterRequest, VerifyEmailRequest, ProfileCompletionRequest, ProfileStatusResponse, ChangePasswordRequest } from "@/lib/dto/auth";
+import { IntrospectResponse, LoginRequest, LoginResponse, RegisterRequest, VerifyEmailRequest, VerifyEmailResponse, OTPResponse, ProfileCompletionRequest, ProfileStatusResponse, ChangePasswordRequest } from "@/lib/dto/auth";
 import { profileService } from "@/lib/services/profileService";
 
 export const AuthAPI = {
@@ -20,7 +20,10 @@ export const AuthAPI = {
   },
   
   verifyEmail: async (data: VerifyEmailRequest) => {
-    const response = await authApi.post<ApiResponse<unknown>>('/auth/verify-email', data);
+    const response = await authApi.post<ApiResponse<VerifyEmailResponse>>('/auth/verify-email', {
+      email: data.email,
+      otpCode: data.otp
+    });
     return response.data;
   },
   
@@ -64,7 +67,12 @@ export const AuthAPI = {
   },
   
   resendEmailVerificationOTP: async (email: string) => {
-    const response = await authApi.post<ApiResponse<unknown>>(`/auth/resend-email-verification?email=${encodeURIComponent(email)}`);
+    const response = await authApi.post<ApiResponse<OTPResponse>>(`/auth/resend-email-verification?email=${encodeURIComponent(email)}`);
+    return response.data;
+  },
+
+  getCurrentOTPInfo: async (email: string) => {
+    const response = await authApi.get<ApiResponse<OTPResponse>>(`/auth/otp-info?email=${encodeURIComponent(email)}`);
     return response.data;
   },
 

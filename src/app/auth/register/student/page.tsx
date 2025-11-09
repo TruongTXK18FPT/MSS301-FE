@@ -32,7 +32,7 @@ export default function StudentRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<StudentRegisterForm>({ 
+  const { register, handleSubmit, formState: { errors }, setValue, setError, watch } = useForm<StudentRegisterForm>({ 
     resolver: zodResolver(schema),
     defaultValues: {
       fullName: "",
@@ -74,21 +74,47 @@ export default function StudentRegisterPage() {
         <CardContent className="space-y-6 relative z-10">
           <form className="space-y-5" onSubmit={handleSubmit(async (values) => {
             setSubmitting(true);
-            const payload: RegisterRequest = {
-              fullName: values.fullName,
-              email: values.email,
-              password: values.password,
-              confirmPassword: values.confirmPassword,
-              userType: 'STUDENT',
-            };
-            const res = await AuthAPI.register(payload);
-            if (res.code === 1000) {
-              toast({ description: 'Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.' });
-              router.push('/auth/verify-otp?email=' + encodeURIComponent(values.email));
-            } else {
-              toast({ description: res.message || 'Đăng ký thất bại', variant: 'destructive' });
+            try {
+              const payload: RegisterRequest = {
+                fullName: values.fullName,
+                email: values.email,
+                password: values.password,
+                confirmPassword: values.confirmPassword,
+                userType: 'STUDENT',
+              };
+              const res = await AuthAPI.register(payload);
+              if (res.code === 1000) {
+                toast({ description: 'Đăng ký thành công. Vui lòng kiểm tra email để nhập OTP.' });
+                router.push('/auth/verify-otp?email=' + encodeURIComponent(values.email));
+              } else {
+                toast({ description: res.message || 'Đăng ký thất bại', variant: 'destructive' });
+              }
+            } catch (error: any) {
+              console.error('Register error:', error);
+              let errorMessage = 'Đăng ký thất bại';
+              let errorCode = null;
+              
+              // Get error from backend response
+              if (error?.response?.data?.message) {
+                errorMessage = error.response.data.message;
+                errorCode = error.response.data.code;
+              } else if (error?.response?.data?.code) {
+                errorCode = error.response.data.code;
+              }
+              
+              // Check if email already exists (ErrorCode.USER_EXISTED = 1002)
+              if (errorCode === 1002 || errorMessage.includes("Email này đã được sử dụng")) {
+                // Set error on email field to highlight it
+                setError('email', {
+                  type: 'manual',
+                  message: errorMessage
+                });
+              }
+              
+              toast({ description: errorMessage, variant: 'destructive' });
+            } finally {
+              setSubmitting(false);
             }
-            setSubmitting(false);
           })}>
             
             {/* Họ và Tên */}
@@ -122,7 +148,11 @@ export default function StudentRegisterPage() {
                   type="email" 
                   placeholder="email@domain.com" 
                   {...register('email')}
-                  className="bg-black/40 border-purple-400/30 text-white rounded-xl backdrop-blur-sm focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 hover:border-purple-400/50 pl-4"
+                  className={`bg-black/40 text-white rounded-xl backdrop-blur-sm focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 pl-4 ${
+                    errors.email 
+                      ? 'border-red-500/50 focus:border-red-500/50' 
+                      : 'border-purple-400/30 focus:border-cyan-400/50 hover:border-purple-400/50'
+                  }`}
                 />
                 <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 size-4 text-purple-400 opacity-50" />
               </div>
@@ -186,8 +216,7 @@ export default function StudentRegisterPage() {
 
             {/* Lớp học */}
             <div className="space-y-2">
-              <Label className="text-pink-200 font-medium flex items-center gap-2">
-                <GraduationCap className="size-4" />
+              <Label className="text-pink-200 font-medium">
                 Lớp học hiện tại
               </Label>
               <ClassSelect 

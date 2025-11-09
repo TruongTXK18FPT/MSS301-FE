@@ -46,10 +46,7 @@ export default function ClassSelect({
             value={option.value}
             className="text-white hover:bg-purple-500/20 focus:bg-purple-500/20 transition-colors duration-200"
           >
-            <div className="flex items-center gap-2">
-              <GraduationCap className="size-4 text-purple-400" />
-              {option.label}
-            </div>
+            {option.label}
           </SelectItem>
         ))}
       </SelectContent>
