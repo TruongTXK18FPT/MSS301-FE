@@ -71,7 +71,8 @@ export default function TeacherRegistrationsPage() {
   const fetchTeacherDetails = async (userId: string) => {
     try {
       // Fetch teacher profile details from profile-service
-      const response = await fetch(`http://localhost:8080/api/v1/profile/admin/teachers/${userId}/details`, {
+      const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
+      const response = await fetch(`${gatewayUrl}/api/v1/profile/admin/teachers/${userId}/details`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }

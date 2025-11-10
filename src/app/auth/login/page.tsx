@@ -258,7 +258,10 @@ export default function LoginPage() {
             
             <Button 
               type="button"
-              onClick={() => window.location.href = 'http://localhost:8080/api/v1/authenticate/auth/google/redirect'}
+              onClick={() => {
+                const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
+                window.location.href = `${gatewayUrl}/api/v1/authenticate/auth/google/redirect`;
+              }}
               className="w-full mt-4 rounded-xl h-14 text-base font-semibold bg-white hover:bg-gray-50 text-gray-900 shadow-2xl shadow-white/20 transition-all duration-300 hover:scale-105 hover:shadow-white/30 relative overflow-hidden group border border-gray-200"
             >
               <span className="relative z-10 flex items-center justify-center gap-3">

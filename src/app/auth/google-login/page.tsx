@@ -83,7 +83,8 @@ export default function GoogleLoginPage() {
     try {
       setLoading(true);
       // Direct redirect to backend endpoint
-      window.location.href = 'http://localhost:8080/api/v1/authenticate/auth/google/redirect';
+      const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
+      window.location.href = `${gatewayUrl}/api/v1/authenticate/auth/google/redirect`;
     } catch (error) {
       console.error('Failed to redirect to Google:', error);
       toast({ description: 'Lỗi chuyển hướng đến Google', variant: 'destructive' });
