@@ -15,7 +15,9 @@ const tabLabels: Record<string, string> = {
   users: 'Quản lý Users',
   classrooms: 'Quản lý Lớp học',
   tenants: 'Quản lý Tenant',
-  subscriptions: 'Quản lý Subscription'
+  subscriptions: 'Quản lý Subscription',
+  documents: 'Quản lý Tài liệu PDF',
+  'teacher-registrations': 'Quản lý đơn đăng ký giáo viên'
 };
 
 export default function AdminHeader({ onMenuClick, currentTab }: AdminHeaderProps) {

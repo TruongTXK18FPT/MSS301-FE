@@ -9,13 +9,14 @@ import {
   CreditCard, 
   X,
   Settings,
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions';
+type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions' | 'documents';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -60,6 +61,12 @@ const menuItems = [
     label: 'Gói Subscription',
     icon: CreditCard,
     description: 'Quản lý gói đăng ký'
+  },
+  {
+    id: 'documents',
+    label: 'Quản lý Tài liệu',
+    icon: FileText,
+    description: 'Quản lý tài liệu PDF'
   }
 ];
 

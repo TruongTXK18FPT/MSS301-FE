@@ -12,8 +12,9 @@ import TeacherRegistrationsPage from './teacher-registrations/page';
 import ClassroomManagement from '@/components/admin/classroom-management';
 import TenantManagement from '@/components/admin/tenant-management';
 import SubscriptionManagement from '@/components/admin/subscription-management';
+import { DocumentList } from '@/components/admin/document-management';
 
-type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions';
+type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions' | 'documents';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('analytics');
@@ -33,6 +34,8 @@ export default function AdminDashboard() {
         return <TenantManagement />;
       case 'subscriptions':
         return <SubscriptionManagement />;
+      case 'documents':
+        return <DocumentList />;
       default:
         return <AnalyticsDashboard />;
     }
