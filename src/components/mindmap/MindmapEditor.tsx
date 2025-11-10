@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain, Save, Download, Share, Edit, Trash2, Plus, Minus, X, Sparkles, Zap, Target, Eye, Calculator, FileQuestion, Lightbulb } from "lucide-react";
+import { Brain, Save, Download, Share, Edit, Trash2, Plus, Minus, X, Sparkles, Zap, Target, Eye, Calculator, FileQuestion, Lightbulb, Globe, Lock } from "lucide-react";
 import { mindmapService } from '@/lib/services/mindmapService';
 import NodeDetailView from './NodeDetailView';
 import ExerciseGeneratorForm from './ExerciseGeneratorForm';
@@ -161,6 +161,23 @@ const wrapText = (ctx: CanvasRenderingContext2D, text: string | null, maxWidth: 
   return lines;
 };
 
+// Calculate dynamic node size based on text content
+const calculateNodeSize = (ctx: CanvasRenderingContext2D, text: string, baseSize: number = 60, zoom: number = 1): number => {
+  if (!text) return baseSize * zoom;
+  
+  // Set font for measurement
+  const fontSize = Math.max(13, 16 * zoom);
+  ctx.font = `bold ${fontSize}px 'Inter', 'Segoe UI', -apple-system, sans-serif`;
+  
+  // Measure text width
+  const textWidth = ctx.measureText(text).width;
+  
+  // Calculate required radius to fit text (with padding)
+  const minRadius = Math.max(baseSize, (textWidth / 2) + 25);
+  
+  return Math.min(minRadius * zoom, 120 * zoom); // Cap at 120 to prevent huge nodes
+};
+
 export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Readonly<MindmapEditorProps>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -210,11 +227,16 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
     loadNodesFromBackend();
   }, [mindmap.id]);
 
-  // Center view with 100% zoom when nodes are loaded (first time only)
+  // Center view with initial zoom when nodes are loaded
   useEffect(() => {
     if (nodes.length > 0 && canvasRef.current) {
-      // Center with 100% zoom (1.0) when opening mindmap
-      centerView(1.0);
+      // Calculate optimal zoom based on number of nodes
+      const optimalZoom = nodes.length > 15 ? 0.5 : nodes.length > 10 ? 0.7 : 1.0;
+      
+      // Delay to ensure canvas is fully rendered
+      setTimeout(() => {
+        centerView(optimalZoom);
+      }, 100);
     }
   }, [nodes.length]);
 
@@ -256,6 +278,65 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
       zoom: newZoom, 
       pan: { x: newPanX, y: newPanY },
       center: { centerX, centerY }
+    });
+  };
+
+  // Auto-layout nodes in circular/radial pattern
+  const autoLayoutNodes = () => {
+    if (nodes.length === 0) return;
+
+    // Find root node (level 0 or node with id 'root')
+    const rootNode = nodes.find(n => n.id === 'root' || n.level === 0);
+    if (!rootNode) {
+      console.warn('[autoLayout] No root node found');
+      return;
+    }
+
+    // Center root node
+    const centerX = 500;
+    const centerY = 400;
+    
+    // Update root position
+    updateNode(rootNode.id, { x: centerX, y: centerY });
+
+    // Group nodes by level
+    const nodesByLevel: Record<number, MindmapNode[]> = {};
+    nodes.forEach(node => {
+      if (node.id === rootNode.id) return;
+      const level = node.level || 1;
+      if (!nodesByLevel[level]) nodesByLevel[level] = [];
+      nodesByLevel[level].push(node);
+    });
+
+    // Layout each level in circular pattern
+    Object.keys(nodesByLevel).forEach(levelKey => {
+      const level = parseInt(levelKey);
+      const levelNodes = nodesByLevel[level];
+      const nodeCount = levelNodes.length;
+      
+      // Calculate radius based on level (200px per level + spacing for node count)
+      const baseRadius = 200 + (level - 1) * 150;
+      const radius = Math.max(baseRadius, (nodeCount * 80) / (2 * Math.PI)); // Ensure enough space
+      
+      // Distribute nodes evenly in circle
+      levelNodes.forEach((node, index) => {
+        const angle = (2 * Math.PI * index) / nodeCount - Math.PI / 2; // Start from top
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        updateNode(node.id, { x, y });
+      });
+    });
+
+    // Auto-center after layout
+    setTimeout(() => {
+      const optimalZoom = nodes.length > 15 ? 0.5 : nodes.length > 10 ? 0.7 : 1.0;
+      centerView(optimalZoom);
+    }, 100);
+    
+    console.log('[autoLayout] Layout completed:', { 
+      totalNodes: nodes.length, 
+      levels: Object.keys(nodesByLevel).length 
     });
   };
 
@@ -530,6 +611,35 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
     }
   };
 
+  const toggleVisibility = async () => {
+    try {
+      const currentVisibility = mindmap.visibility || 'PRIVATE';
+      const newVisibility = currentVisibility === 'PRIVATE' ? 'PUBLIC' : 'PRIVATE';
+      
+      // Update with title to pass validation
+      await mindmapService.updateMindmap(mindmap.id, { 
+        title: mindmap.title,
+        visibility: newVisibility 
+      });
+      
+      // Update local mindmap object
+      (mindmap as any).visibility = newVisibility;
+      
+      // Show clear message about the NEW state
+      const message = newVisibility === 'PUBLIC' 
+        ? '✅ Đã chuyển sang Công khai - Mọi người có thể xem' 
+        : '🔒 Đã chuyển sang Riêng tư - Chỉ bạn có thể xem';
+      
+      alert(message);
+      
+      // Reload page to reflect changes
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      alert('❌ Có lỗi khi thay đổi chế độ hiển thị');
+    }
+  };
+
   // Draw mindmap with improved galaxy theme
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -636,7 +746,10 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
       const x = (node.x * zoom) + pan.x;
       const y = (node.y * zoom) + pan.y;
       const baseSize = node.size || 60; // Increased base size for larger circles
-      const radius = baseSize * zoom; // Use single radius for circles
+      
+      // Calculate dynamic radius based on text content
+      const radius = calculateNodeSize(ctx, node.label, baseSize, zoom);
+      
       const isSelected = selectedNode === node.id;
       const nodeColor = node.color || '#8B5CF6';
 
@@ -914,6 +1027,21 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
           </div>
           <div className="flex items-center gap-2">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleVisibility}
+              className={mindmap.visibility === 'PUBLIC' 
+                ? "bg-green-500/20 backdrop-blur border-green-300/50 text-green-200 hover:bg-green-500/30"
+                : "bg-orange-500/20 backdrop-blur border-orange-300/50 text-orange-200 hover:bg-orange-500/30"
+              }
+            >
+              {mindmap.visibility === 'PUBLIC' ? (
+                <><Globe className="h-4 w-4 mr-2" />Công khai</>
+              ) : (
+                <><Lock className="h-4 w-4 mr-2" />Riêng tư</>
+              )}
+            </Button>
+            <Button
               variant={isEditing ? "default" : "outline"}
               size="sm"
               onClick={() => setIsEditing(!isEditing)}
@@ -1045,6 +1173,16 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
               <Button
                 variant="outline"
                 size="sm"
+                onClick={autoLayoutNodes}
+                className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-400/30 text-purple-200 hover:from-purple-500/30 hover:to-pink-500/30"
+                title="Tự động sắp xếp nodes đẹp mắt"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Auto Layout
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => centerView(1.0)}
                 className="bg-blue-500/20 border-blue-400/30 text-blue-200 hover:bg-blue-500/30"
                 title="Căn giữa view để xem tất cả nodes"
@@ -1055,7 +1193,7 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+                onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
                 className="bg-black/30 border-purple-400/30 text-purple-200"
               >
                 <Minus className="h-4 w-4" />

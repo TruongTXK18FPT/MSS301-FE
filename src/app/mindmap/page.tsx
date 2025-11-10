@@ -80,6 +80,33 @@ export default function MindMapPage() {
     }
   };
 
+  const handleToggleVisibility = async (mindmap: any) => {
+    try {
+      const currentVisibility = mindmap.visibility || 'PRIVATE';
+      const newVisibility = currentVisibility === 'PRIVATE' ? 'PUBLIC' : 'PRIVATE';
+      
+      await mindmapService.updateMindmap(mindmap.id, {
+        title: mindmap.title,
+        visibility: newVisibility
+      });
+      
+      // Update local state
+      setUserMindmaps(prev => prev.map(m => 
+        m.id === mindmap.id 
+          ? { ...m, visibility: newVisibility }
+          : m
+      ));
+      
+      const message = newVisibility === 'PUBLIC' 
+        ? '✅ Đã chuyển sang Công khai' 
+        : '🔒 Đã chuyển sang Riêng tư';
+      alert(message);
+    } catch (error) {
+      console.error('Failed to toggle visibility:', error);
+      alert('❌ Có lỗi khi thay đổi chế độ hiển thị');
+    }
+  };
+
   const handleCloseEditor = () => {
     setEditingMindmap(null);
     loadMindmaps(); // Reload to get updated data
@@ -244,7 +271,7 @@ export default function MindMapPage() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mb-3">
                       <Button 
                         size="sm" 
                         onClick={() => handleViewMindmap(mindmap)}
@@ -272,10 +299,26 @@ export default function MindMapPage() {
                       </Button>
                     </div>
                     
-                    {/* Visibility Badge */}
-                    <div className="flex items-center gap-2 mt-3 text-xs text-pink-200/70">
-                      {getVisibilityIcon(mindmap.visibility)}
-                      <span>{getVisibilityLabel(mindmap.visibility)}</span>
+                    {/* Visibility Toggle & Badge */}
+                    <div className="flex items-center justify-between">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleVisibility(mindmap)}
+                        className={`flex items-center gap-2 text-xs ${
+                          mindmap.visibility === 'PUBLIC'
+                            ? 'bg-green-500/20 border-green-400/30 text-green-300 hover:bg-green-500/30'
+                            : 'bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-500/30'
+                        }`}
+                        title={mindmap.visibility === 'PUBLIC' ? 'Chuyển sang Riêng tư' : 'Chuyển sang Công khai'}
+                      >
+                        {getVisibilityIcon(mindmap.visibility)}
+                        <span>{getVisibilityLabel(mindmap.visibility)}</span>
+                      </Button>
+                      <div className="flex items-center gap-2 text-xs text-pink-200/70">
+                        <Calendar className="size-3" />
+                        {mindmap.lastModified || 'Unknown'}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

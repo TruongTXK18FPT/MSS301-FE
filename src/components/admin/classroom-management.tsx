@@ -83,6 +83,26 @@ export default function ClassroomManagement() {
   const [pageSize] = useState(10);
   const [totalClassrooms, setTotalClassrooms] = useState(0);
 
+  // Create form state
+  const [createFormData, setCreateFormData] = useState({
+    name: '',
+    grade: '',
+    description: '',
+    subject: '',
+    maxStudents: 30,
+    isPublic: false
+  });
+
+  // Edit form state
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    grade: '',
+    description: '',
+    subject: '',
+    maxStudents: 30,
+    isPublic: false
+  });
+
   // Fetch classrooms from API
   useEffect(() => {
     const fetchClassrooms = async () => {
@@ -172,33 +192,116 @@ export default function ClassroomManagement() {
     }
   };
 
-  const handleCreateClassroom = async (classroomData: any) => {
+  const handleCreateClassroom = async () => {
+    // Validate form data
+    if (!createFormData.name || !createFormData.grade || !createFormData.subject) {
+      setError('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
     try {
-      await adminService.createClassroom(classroomData);
+      setIsLoading(true);
+      const payload = {
+        name: createFormData.name,
+        grade: createFormData.grade,
+        description: createFormData.description,
+        subject: createFormData.subject,
+        maxStudents: parseInt(createFormData.maxStudents.toString()),
+        isPublic: createFormData.isPublic
+      };
+
+      await adminService.createClassroom(payload);
+
       // Refresh classrooms list
       const response = await adminService.getAllClassrooms(0, pageSize);
       setClassrooms(response.content);
+      setTotalClassrooms(response.totalElements);
       setCurrentPage(0);
+
+      // Reset form and close dialog
+      setCreateFormData({
+        name: '',
+        grade: '',
+        description: '',
+        subject: '',
+        maxStudents: 30,
+        isPublic: false
+      });
       setIsCreateDialogOpen(false);
+      setError(null);
     } catch (err: any) {
       console.error('Failed to create classroom:', err);
-      setError('Failed to create classroom. Please try again.');
+      setError(err?.response?.data?.message || 'Không thể tạo lớp học. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleEditClassroom = async (classroomData: any) => {
+  const handleEditClassroom = async () => {
+    // Validate form data
+    if (!editFormData.name || !editFormData.grade || !editFormData.subject) {
+      setError('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    if (!selectedClassroom) return;
+
     try {
-      if (!selectedClassroom) return;
-      await adminService.updateClassroom(selectedClassroom.id, classroomData);
+      setIsLoading(true);
+      const payload = {
+        name: editFormData.name,
+        grade: editFormData.grade,
+        description: editFormData.description,
+        subject: editFormData.subject,
+        maxStudents: parseInt(editFormData.maxStudents.toString()),
+        isPublic: editFormData.isPublic
+      };
+
+      await adminService.updateClassroom(selectedClassroom.id, payload);
+
       // Refresh classrooms list
       const response = await adminService.getAllClassrooms(currentPage, pageSize);
       setClassrooms(response.content);
+      setTotalClassrooms(response.totalElements);
+
       setIsEditDialogOpen(false);
       setSelectedClassroom(null);
+      setError(null);
     } catch (err: any) {
       console.error('Failed to update classroom:', err);
-      setError('Failed to update classroom. Please try again.');
+      setError(err?.response?.data?.message || 'Không thể cập nhật lớp học. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Reset and open create dialog
+  const openCreateDialog = () => {
+    setCreateFormData({
+      name: '',
+      grade: '',
+      description: '',
+      subject: '',
+      maxStudents: 30,
+      isPublic: false
+    });
+    setError(null);
+    setIsCreateDialogOpen(true);
+  };
+
+  // Set edit form data when dialog opens
+  const openEditDialog = (classroom: ClassroomResponse) => {
+    setEditFormData({
+      name: classroom.name,
+      grade: classroom.grade,
+      description: classroom.description,
+      subject: classroom.subject,
+      maxStudents: classroom.maxStudents,
+      isPublic: classroom.isPublic
+    });
+    setSelectedClassroom(classroom);
+    setError(null);
+    setIsEditDialogOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -235,8 +338,8 @@ export default function ClassroomManagement() {
           <h2 className="text-2xl font-bold text-white">Quản lý Lớp học</h2>
           <p className="text-slate-400">Quản lý các lớp học trong hệ thống</p>
         </div>
-        <Button 
-          onClick={() => setIsCreateDialogOpen(true)}
+        <Button
+          onClick={openCreateDialog}
           className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -410,19 +513,27 @@ export default function ClassroomManagement() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium text-white">{classroom.owner}</p>
-                          <p className="text-sm text-slate-400">-</p>
+                          <p className="font-medium text-white">{classroom.owner || `User ${classroom.ownerId}`}</p>
+                          <p className="text-sm text-slate-400">{classroom.ownerId}</p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col space-y-1">
-                          <Badge
-                            variant="outline"
-                            className={getSubjectColor(classroom.subject)}
-                          >
-                            {classroom.subject}
-                          </Badge>
-                          <span className="text-xs text-slate-400">Lớp {classroom.grade}</span>
+                          {classroom.subject ? (
+                            <>
+                              <Badge
+                                variant="outline"
+                                className={getSubjectColor(classroom.subject)}
+                              >
+                                {classroom.subject}
+                              </Badge>
+                              <span className="text-xs text-slate-400">Lớp {classroom.grade}</span>
+                            </>
+                          ) : (
+                            <Badge variant="outline" className="bg-gray-500/20 text-gray-400 border-gray-500/30">
+                              Chưa có
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -444,9 +555,9 @@ export default function ClassroomManagement() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={getStatusColor(classroom.status)}
+                          className={getStatusColor(classroom.status || 'ACTIVE')}
                         >
-                          {classroom.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
+                          {classroom.status === 'ACTIVE' ? 'Hoạt động' : classroom.status === 'INACTIVE' ? 'Không hoạt động' : 'Chưa có'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -478,10 +589,7 @@ export default function ClassroomManagement() {
                             <DropdownMenuLabel className="text-white">Thao tác</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-purple-500/20" />
                             <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedClassroom(classroom);
-                                setIsEditDialogOpen(true);
-                              }}
+                              onClick={() => openEditDialog(classroom)}
                               className="text-slate-300 hover:bg-purple-500/20 hover:text-white"
                             >
                               <Edit className="w-4 h-4 mr-2" />
@@ -542,13 +650,15 @@ export default function ClassroomManagement() {
                 <Label htmlFor="name" className="text-slate-300">Tên lớp học</Label>
                 <Input
                   id="name"
+                  value={createFormData.name}
+                  onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
                   className="bg-slate-700/50 border-purple-500/30 text-white"
                   placeholder="Nhập tên lớp học"
                 />
               </div>
               <div>
                 <Label htmlFor="grade" className="text-slate-300">Khối lớp</Label>
-                <Select>
+                <Select value={createFormData.grade} onValueChange={(value) => setCreateFormData({ ...createFormData, grade: value })}>
                   <SelectTrigger className="bg-slate-700/50 border-purple-500/30 text-white">
                     <SelectValue placeholder="Chọn khối lớp" />
                   </SelectTrigger>
@@ -564,6 +674,8 @@ export default function ClassroomManagement() {
               <Label htmlFor="description" className="text-slate-300">Mô tả</Label>
               <Input
                 id="description"
+                value={createFormData.description}
+                onChange={(e) => setCreateFormData({ ...createFormData, description: e.target.value })}
                 className="bg-slate-700/50 border-purple-500/30 text-white"
                 placeholder="Nhập mô tả lớp học"
               />
@@ -571,7 +683,7 @@ export default function ClassroomManagement() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="subject" className="text-slate-300">Môn học</Label>
-                <Select>
+                <Select value={createFormData.subject} onValueChange={(value) => setCreateFormData({ ...createFormData, subject: value })}>
                   <SelectTrigger className="bg-slate-700/50 border-purple-500/30 text-white">
                     <SelectValue placeholder="Chọn môn học" />
                   </SelectTrigger>
@@ -587,29 +699,37 @@ export default function ClassroomManagement() {
                 <Input
                   id="maxStudents"
                   type="number"
+                  value={createFormData.maxStudents}
+                  onChange={(e) => setCreateFormData({ ...createFormData, maxStudents: parseInt(e.target.value) || 30 })}
                   className="bg-slate-700/50 border-purple-500/30 text-white"
                   placeholder="30"
                 />
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Switch id="isPublic" />
+              <Switch
+                id="isPublic"
+                checked={createFormData.isPublic}
+                onCheckedChange={(checked) => setCreateFormData({ ...createFormData, isPublic: checked })}
+              />
               <Label htmlFor="isPublic" className="text-slate-300">Lớp học công khai</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsCreateDialogOpen(false)}
               className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+              disabled={isLoading}
             >
               Hủy
             </Button>
-            <Button 
-              onClick={() => handleCreateClassroom({})}
+            <Button
+              onClick={handleCreateClassroom}
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              disabled={isLoading}
             >
-              Tạo Lớp học
+              {isLoading ? 'Đang tạo...' : 'Tạo Lớp học'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -630,13 +750,14 @@ export default function ClassroomManagement() {
                 <Label htmlFor="edit-name" className="text-slate-300">Tên lớp học</Label>
                 <Input
                   id="edit-name"
-                  defaultValue={selectedClassroom?.name}
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                   className="bg-slate-700/50 border-purple-500/30 text-white"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-grade" className="text-slate-300">Khối lớp</Label>
-                <Select defaultValue={selectedClassroom?.grade}>
+                <Select value={editFormData.grade} onValueChange={(value) => setEditFormData({ ...editFormData, grade: value })}>
                   <SelectTrigger className="bg-slate-700/50 border-purple-500/30 text-white">
                     <SelectValue placeholder="Chọn khối lớp" />
                   </SelectTrigger>
@@ -652,14 +773,15 @@ export default function ClassroomManagement() {
               <Label htmlFor="edit-description" className="text-slate-300">Mô tả</Label>
               <Input
                 id="edit-description"
-                defaultValue={selectedClassroom?.description}
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                 className="bg-slate-700/50 border-purple-500/30 text-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit-subject" className="text-slate-300">Môn học</Label>
-                <Select defaultValue={selectedClassroom?.subject}>
+                <Select value={editFormData.subject} onValueChange={(value) => setEditFormData({ ...editFormData, subject: value })}>
                   <SelectTrigger className="bg-slate-700/50 border-purple-500/30 text-white">
                     <SelectValue placeholder="Chọn môn học" />
                   </SelectTrigger>
@@ -675,32 +797,36 @@ export default function ClassroomManagement() {
                 <Input
                   id="edit-maxStudents"
                   type="number"
-                  defaultValue={selectedClassroom?.maxStudents}
+                  value={editFormData.maxStudents}
+                  onChange={(e) => setEditFormData({ ...editFormData, maxStudents: parseInt(e.target.value) || 30 })}
                   className="bg-slate-700/50 border-purple-500/30 text-white"
                 />
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Switch 
-                id="edit-isPublic" 
-                defaultChecked={selectedClassroom?.isPublic}
+              <Switch
+                id="edit-isPublic"
+                checked={editFormData.isPublic}
+                onCheckedChange={(checked) => setEditFormData({ ...editFormData, isPublic: checked })}
               />
               <Label htmlFor="edit-isPublic" className="text-slate-300">Lớp học công khai</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
               className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+              disabled={isLoading}
             >
               Hủy
             </Button>
-            <Button 
-              onClick={() => handleEditClassroom({})}
+            <Button
+              onClick={handleEditClassroom}
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              disabled={isLoading}
             >
-              Cập nhật
+              {isLoading ? 'Đang cập nhật...' : 'Cập nhật'}
             </Button>
           </DialogFooter>
         </DialogContent>

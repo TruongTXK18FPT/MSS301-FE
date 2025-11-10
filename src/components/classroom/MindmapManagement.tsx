@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Plus, Search, Eye, Edit, Trash2, 
-  Share2, BookOpen, Clock 
+  Share2, BookOpen, Clock, Globe, Lock 
 } from 'lucide-react';
 import { mindmapService } from '@/lib/services/mindmapService';
 
@@ -30,11 +30,14 @@ export default function MindmapManagement({ classroomId, isTeacher }: MindmapMan
   const loadMindmaps = async () => {
     try {
       setLoading(true);
-      // TODO: Implement classroomService.getClassroomMindmaps
-      // For now, using mock data
-      setMindmaps([]);
+      // TODO: Implement classroomService.getClassroomMindmaps(classroomId)
+      // For now, load user's mindmaps to test toggle functionality
+      const userMindmaps = await mindmapService.getUserMindmaps();
+      setMindmaps(userMindmaps);
+      console.log('[MindmapManagement] Loaded user mindmaps:', userMindmaps);
     } catch (error) {
       console.error('Error loading mindmaps:', error);
+      setMindmaps([]);
     } finally {
       setLoading(false);
     }
@@ -57,6 +60,28 @@ export default function MindmapManagement({ classroomId, isTeacher }: MindmapMan
     } catch (error) {
       console.error('Error deleting mindmap:', error);
       alert('Xóa mindmap thất bại');
+    }
+  };
+
+  const handleToggleVisibility = async (mindmap: any) => {
+    try {
+      const newVisibility = mindmap.visibility === 'PRIVATE' ? 'PUBLIC' : 'PRIVATE';
+      await mindmapService.updateMindmap(mindmap.id, { 
+        title: mindmap.title,
+        visibility: newVisibility 
+      });
+      
+      // Update local state
+      setMindmaps(mindmaps.map(m => 
+        m.id === mindmap.id 
+          ? { ...m, visibility: newVisibility } 
+          : m
+      ));
+      
+      alert(`Đã chuyển sang ${newVisibility === 'PUBLIC' ? 'Công khai' : 'Riêng tư'}!`);
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      alert('Có lỗi khi thay đổi chế độ hiển thị');
     }
   };
 
@@ -118,8 +143,15 @@ export default function MindmapManagement({ classroomId, isTeacher }: MindmapMan
                       <CardTitle className="text-base line-clamp-2">
                         {mindmap.title}
                       </CardTitle>
-                      <Badge variant={mindmap.isPublic ? 'default' : 'secondary'}>
-                        {mindmap.isPublic ? 'Công khai' : 'Riêng tư'}
+                      <Badge 
+                        variant={mindmap.visibility === 'PUBLIC' ? 'default' : 'secondary'}
+                        className={mindmap.visibility === 'PUBLIC' ? 'bg-green-500' : 'bg-orange-500'}
+                      >
+                        {mindmap.visibility === 'PUBLIC' ? (
+                          <><Globe className="w-3 h-3 mr-1" />Công khai</>
+                        ) : (
+                          <><Lock className="w-3 h-3 mr-1" />Riêng tư</>
+                        )}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -151,7 +183,23 @@ export default function MindmapManagement({ classroomId, isTeacher }: MindmapMan
                       </Button>
                       {isTeacher && (
                         <>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleToggleVisibility(mindmap)}
+                            className={mindmap.visibility === 'PUBLIC' 
+                              ? "border-green-500 text-green-600 hover:bg-green-50"
+                              : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                            }
+                            title={mindmap.visibility === 'PUBLIC' ? 'Chuyển sang Riêng tư' : 'Chuyển sang Công khai'}
+                          >
+                            {mindmap.visibility === 'PUBLIC' ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            title="Chia sẻ vào lớp học"
+                          >
                             <Share2 className="w-4 h-4" />
                           </Button>
                           <Button
@@ -159,6 +207,7 @@ export default function MindmapManagement({ classroomId, isTeacher }: MindmapMan
                             size="sm"
                             onClick={() => handleDeleteMindmap(mindmap.id)}
                             className="text-destructive hover:text-destructive"
+                            title="Xóa mindmap"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

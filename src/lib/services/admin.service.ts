@@ -21,15 +21,21 @@ interface ClassroomResponse {
   id: number;
   name: string;
   description: string;
-  owner: string;
-  subject: string;
-  grade: string;
+  ownerId: number;
+  owner?: string; // Derived from ownerId
+  subject?: string; // Optional - may not be in response
+  grade?: string; // Optional - may not be in response
   isPublic: boolean;
-  status: "ACTIVE" | "INACTIVE";
+  status?: "ACTIVE" | "INACTIVE"; // Optional - may not be in response
   maxStudents: number;
   currentStudents: number;
   joinCode: string;
+  password?: string;
+  assignmentCount?: number;
+  quizCount?: number;
+  contentCount?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface ApiResponse<T> {
@@ -85,6 +91,33 @@ class AdminService {
       }
       return config;
     });
+
+    // Response interceptor for both APIs
+    this.api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    this.classroomApi.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   // ========== USER MANAGEMENT ==========
@@ -205,8 +238,20 @@ class AdminService {
       );
 
       const data = response.data.result;
+
+      // Handle Spring Data Page response format
+      if (data && typeof data === 'object' && 'content' in data) {
+        return {
+          content: data.content || [],
+          totalElements: data.totalElements || 0,
+          totalPages: data.totalPages || 0,
+          currentPage: data.number || page,
+          pageSize: data.size || size,
+        };
+      }
+
+      // If response is an array, convert to paginated format
       if (Array.isArray(data)) {
-        // If response is an array, convert to paginated format
         return {
           content: data,
           totalElements: data.length,
@@ -216,12 +261,13 @@ class AdminService {
         };
       }
 
+      // Fallback
       return {
-        content: data.content || [],
-        totalElements: data.totalElements || 0,
-        totalPages: data.totalPages || 0,
-        currentPage: data.number || 0,
-        pageSize: data.size || size,
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: page,
+        pageSize: size,
       };
     } catch (error) {
       console.error("Error fetching classrooms:", error);

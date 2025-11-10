@@ -133,7 +133,13 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
       const result = await mindmapService.generateMindmapWithAi(requestData);
       console.log('[MindmapCreateForm] Result received:', result);
 
-      setSuccess('Tạo mindmap thành công!');
+      setSuccess('Tạo mindmap thành công! Đang chuyển trang...');
+      
+      // Auto-redirect to view the created mindmap after 1 second
+      setTimeout(() => {
+        window.location.href = `/mindmap/${result.id}`;
+      }, 1000);
+      
       if (onSuccess) {
         onSuccess(result);
       }
@@ -166,7 +172,13 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
         visibility: formData.visibility
       });
 
-      setSuccess('Tạo mindmap thành công!');
+      setSuccess('Tạo mindmap thành công! Đang chuyển trang...');
+      
+      // Auto-redirect to view the created mindmap after 1 second
+      setTimeout(() => {
+        window.location.href = `/mindmap/${result.id}`;
+      }, 1000);
+      
       if (onSuccess) {
         onSuccess(result);
       }
@@ -215,7 +227,7 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                 className={`p-6 rounded-xl border-2 transition-all text-left ${
                   mindmapType === 'general'
                     ? 'border-purple-500 bg-purple-50 shadow-lg shadow-purple-200'
-                    : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-md'
+                    : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/30 hover:shadow-md'
                 }`}
               >
                 <div className="flex items-start gap-4">
@@ -267,7 +279,7 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                 className={`p-6 rounded-xl border-2 transition-all text-left ${
                   mindmapType === 'document'
                     ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-200'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-md'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-md'
                 }`}
               >
                 <div className="flex items-start gap-4">
@@ -516,51 +528,6 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                     </div>
                   )}
 
-                  {/* Visibility Selector */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold">
-                      <Eye className="inline-block mr-2 h-4 w-4 text-indigo-600" />
-                      Chế độ hiển thị <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="grid grid-cols-3 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange('visibility', 'PRIVATE')}
-                        className={`p-3 rounded-lg border-2 transition-all ${
-                          formData.visibility === 'PRIVATE'
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-md'
-                            : 'border-gray-200 hover:border-red-400 hover:bg-red-50 hover:shadow-lg transform hover:scale-105'
-                        }`}
-                      >
-                        <Lock className={`h-5 w-5 mx-auto mb-1 ${formData.visibility === 'PRIVATE' ? 'text-blue-600' : 'text-gray-600 hover:text-red-600'}`} />
-                        <div className="font-semibold text-xs">Riêng tư</div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange('visibility', 'PUBLIC')}
-                        className={`p-3 rounded-lg border-2 transition-all ${
-                          formData.visibility === 'PUBLIC'
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-md'
-                            : 'border-gray-200 hover:border-green-400 hover:bg-green-50 hover:shadow-lg transform hover:scale-105'
-                        }`}
-                      >
-                        <Globe className={`h-5 w-5 mx-auto mb-1 ${formData.visibility === 'PUBLIC' ? 'text-blue-600' : 'text-gray-600 hover:text-green-600'}`} />
-                        <div className="font-semibold text-xs">Công khai</div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange('visibility', 'CLASSROOM')}
-                        className={`p-3 rounded-lg border-2 transition-all ${
-                          formData.visibility === 'CLASSROOM'
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-md'
-                            : 'border-gray-200 hover:border-cyan-400 hover:bg-cyan-50 hover:shadow-lg transform hover:scale-105'
-                        }`}
-                      >
-                        <Users className={`h-5 w-5 mx-auto mb-1 ${formData.visibility === 'CLASSROOM' ? 'text-blue-600' : 'text-gray-600 hover:text-cyan-600'}`} />
-                        <div className="font-semibold text-xs">Lớp học</div>
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -667,7 +634,7 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                 variant="outline"
                 onClick={handleManualCreate}
                 disabled={isGenerating}
-                className="flex-1 hover:bg-gray-50 transition-all"
+                className="flex-1 hover:bg-purple-50 transition-all"
                 size="lg"
               >
                 {isGenerating ? (
@@ -689,7 +656,7 @@ export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<Mind
                   variant="ghost"
                   onClick={onCancel}
                   disabled={isGenerating}
-                  className="hover:bg-gray-100 transition-all"
+                  className="hover:bg-purple-50 transition-all"
                   size="lg"
                 >
                   Hủy
