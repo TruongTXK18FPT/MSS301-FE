@@ -27,6 +27,10 @@ ENV NODE_ENV=production
 # Limit Node.js memory to 1GB during build
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
+# Set build-time public environment variables
+ARG NEXT_PUBLIC_GATEWAY_URL=https://api.mss301.me
+ENV NEXT_PUBLIC_GATEWAY_URL=${NEXT_PUBLIC_GATEWAY_URL}
+
 # Build Next.js application
 RUN npm run build
 
