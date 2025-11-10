@@ -1,11 +1,11 @@
 /**
  * Document Service API Client
- * Base URL: http://localhost:8080/api/v1/document
+ * Base URL: Gateway/api/v1/document
  * 
  * IMPORTANT: Gateway chạy ở port 8080, Document Service chạy ở port 8091
  * Gateway prefix: /api/v1/document (không có 's')
  * Gateway sẽ tự động rewrite /api/v1/document/* thành /api/v1/documents/* khi route đến Document Service
- * FE chỉ cần gọi: http://localhost:8080/api/v1/document/...
+ * FE chỉ cần gọi qua Gateway
  * KHÔNG sử dụng /api/v1/documents (có 's') trong URL
  */
 
@@ -23,8 +23,7 @@ import {
   DocumentsListResponse,
   TocAnalysisDto,
 } from '@/lib/dto/document';
-
-const BASE_URL = 'http://localhost:8080/api/v1/document';
+import { documentApi } from './axios';
 
 // Re-export types for convenience
 export {
@@ -58,41 +57,28 @@ export async function uploadDocument(
   if (title) formData.append('title', title);
   if (description) formData.append('description', description);
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable && onUploadProgress) {
-        const progress = Math.round((e.loaded * 100) / e.total);
-        onUploadProgress(progress);
+  try {
+    const response = await documentApi.post<DocumentApiResponse<DocumentResponseDto>>(
+      '/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onUploadProgress) {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onUploadProgress(progress);
+          }
+        },
       }
-    });
+    );
 
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const response = JSON.parse(xhr.responseText);
-          resolve(response);
-        } catch (error) {
-          reject(new Error('Invalid response format'));
-        }
-      } else {
-        try {
-          const errorResponse = JSON.parse(xhr.responseText);
-          reject(new Error(errorResponse.message || `HTTP ${xhr.status}`));
-        } catch {
-          reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-        }
-      }
-    });
-
-    xhr.addEventListener('error', () => {
-      reject(new Error('Network error'));
-    });
-
-    xhr.open('POST', `${BASE_URL}/upload`);
-    xhr.send(formData);
-  });
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
+    throw new Error(errorMessage);
+  }
 }
 
 /**
@@ -101,16 +87,15 @@ export async function uploadDocument(
 export async function triggerProcessing(
   documentId: string
 ): Promise<DocumentApiResponse<ProcessingJobDto>> {
-  const response = await fetch(`${BASE_URL}/${documentId}/process`, {
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Processing failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.post<DocumentApiResponse<ProcessingJobDto>>(
+      `/${documentId}/process`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Processing failed';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -119,19 +104,18 @@ export async function triggerProcessing(
 export async function getAllDocuments(
   status?: DocumentStatus
 ): Promise<DocumentApiResponse<DocumentsListResponse>> {
-  const url = new URL(BASE_URL);
-  if (status) {
-    url.searchParams.append('status', status);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<DocumentsListResponse>>(
+      '',
+      {
+        params: status ? { status } : undefined,
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch documents';
+    throw new Error(errorMessage);
   }
-
-  const response = await fetch(url.toString());
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to fetch documents' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
-  }
-
-  return response.json();
 }
 
 /**
@@ -140,14 +124,15 @@ export async function getAllDocuments(
 export async function getDocumentById(
   documentId: string
 ): Promise<DocumentApiResponse<DocumentResponseDto>> {
-  const response = await fetch(`${BASE_URL}/${documentId}`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Document not found' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<DocumentResponseDto>>(
+      `/${documentId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Document not found';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -156,14 +141,15 @@ export async function getDocumentById(
 export async function getProcessingStatus(
   documentId: string
 ): Promise<DocumentApiResponse<ProcessingStatusDto>> {
-  const response = await fetch(`${BASE_URL}/${documentId}/status`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to get status' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<ProcessingStatusDto>>(
+      `/${documentId}/status`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to get status';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -172,14 +158,15 @@ export async function getProcessingStatus(
 export async function getDocumentStructure(
   documentId: string
 ): Promise<DocumentApiResponse<DocumentStructureDto>> {
-  const response = await fetch(`${BASE_URL}/${documentId}/structure`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to get structure' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<DocumentStructureDto>>(
+      `/${documentId}/structure`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to get structure';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -194,29 +181,31 @@ export async function getDocumentChunks(
     size?: number;
   }
 ): Promise<DocumentApiResponse<PaginatedChunksDto>> {
-  const url = new URL(`${BASE_URL}/${documentId}/chunks`);
-  
-  if (options?.chapter !== undefined) {
-    url.searchParams.append('chapter', options.chapter.toString());
-  }
-  if (options?.lesson !== undefined) {
-    url.searchParams.append('lesson', options.lesson.toString());
-  }
-  if (options?.page !== undefined) {
-    url.searchParams.append('page', options.page.toString());
-  }
-  if (options?.size !== undefined) {
-    url.searchParams.append('size', options.size.toString());
-  }
+  try {
+    const params: Record<string, string> = {};
+    
+    if (options?.chapter !== undefined) {
+      params.chapter = options.chapter.toString();
+    }
+    if (options?.lesson !== undefined) {
+      params.lesson = options.lesson.toString();
+    }
+    if (options?.page !== undefined) {
+      params.page = options.page.toString();
+    }
+    if (options?.size !== undefined) {
+      params.size = options.size.toString();
+    }
 
-  const response = await fetch(url.toString());
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to get chunks' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const response = await documentApi.get<DocumentApiResponse<PaginatedChunksDto>>(
+      `/${documentId}/chunks`,
+      { params }
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to get chunks';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -225,14 +214,15 @@ export async function getDocumentChunks(
 export async function getChunkById(
   chunkId: string
 ): Promise<DocumentApiResponse<ChunkDto>> {
-  const response = await fetch(`${BASE_URL}/chunks/${chunkId}`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Chunk not found' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<ChunkDto>>(
+      `/chunks/${chunkId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Chunk not found';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -242,17 +232,18 @@ export async function searchChunks(
   documentId: string,
   query: string
 ): Promise<DocumentApiResponse<SearchResultDto>> {
-  const url = new URL(`${BASE_URL}/${documentId}/chunks/search`);
-  url.searchParams.append('q', query);
-
-  const response = await fetch(url.toString());
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Search failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<SearchResultDto>>(
+      `/${documentId}/chunks/search`,
+      {
+        params: { q: query },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Search failed';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -261,30 +252,30 @@ export async function searchChunks(
 export async function deleteDocument(
   documentId: string
 ): Promise<DocumentApiResponse<null>> {
-  const response = await fetch(`${BASE_URL}/${documentId}`, {
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Delete failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.delete<DocumentApiResponse<null>>(
+      `/${documentId}`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Delete failed';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
  * Get available statuses
  */
 export async function getAvailableStatuses(): Promise<DocumentApiResponse<DocumentStatus[]>> {
-  const response = await fetch(`${BASE_URL}/statuses`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to get statuses' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<DocumentStatus[]>>(
+      '/statuses'
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to get statuses';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
@@ -293,14 +284,15 @@ export async function getAvailableStatuses(): Promise<DocumentApiResponse<Docume
 export async function getTocAnalysis(
   documentId: string
 ): Promise<DocumentApiResponse<TocAnalysisDto>> {
-  const response = await fetch(`${BASE_URL}/${documentId}/toc-analysis`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to get TOC analysis' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+  try {
+    const response = await documentApi.get<DocumentApiResponse<TocAnalysisDto>>(
+      `/${documentId}/toc-analysis`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to get TOC analysis';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 /**
