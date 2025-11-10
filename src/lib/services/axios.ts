@@ -1,11 +1,21 @@
 import axios from 'axios';
 
 // Cấu hình biến môi trường
-const isLocal = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === 'development';
 const isServer = typeof window === 'undefined';
 
 // Gateway URL - Frontend chỉ gọi đến Gateway
-const GATEWAY_URL = isLocal ? 'http://localhost:8080' : process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
+// Development: use localhost:8080
+// Production: use NEXT_PUBLIC_GATEWAY_URL from environment or default to https://api.mss301.me
+const GATEWAY_URL = isDevelopment 
+  ? 'http://localhost:8080' 
+  : (process.env.NEXT_PUBLIC_GATEWAY_URL || 'https://api.mss301.me');
+
+console.log('[Axios Config] Environment:', { 
+  isDevelopment, 
+  GATEWAY_URL,
+  NODE_ENV: process.env.NODE_ENV 
+});
 
 // API Prefix từ Gateway
 const API_PREFIX = '/api/v1';
