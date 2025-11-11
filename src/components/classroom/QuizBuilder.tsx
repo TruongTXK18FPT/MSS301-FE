@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   Plus, Trash2, GripVertical, Check, X,
-  FileQuestion, Award, Clock, AlertCircle, Loader2
+  FileQuestion, Award, Clock, AlertCircle, Loader2, Sparkles
 } from 'lucide-react';
 import {
   Select,
@@ -18,8 +18,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { quizService, QuizQuestionRequest } from '@/services/quiz.service';
+import { aiQuizService } from '@/services/ai-quiz.service';
 import MathTextInput from './MathTextInput';
 import LatexPreview from './LatexPreview';
+import AiQuizGeneratorModal from './AiQuizGeneratorModal';
 import { useToast } from '@/hooks/use-toast';
 
 interface QuizBuilderProps {
@@ -51,6 +53,7 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
   const [currentStep, setCurrentStep] = useState<'overview' | 'questions'>('overview');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const { toast } = useToast();
 
   // Load existing questions on mount
@@ -215,6 +218,48 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
     }
   };
 
+  const handleAiGenerate = async (topic: string, grade: string, numQuestions: number) => {
+    try {
+      toast({
+        title: 'Đang tạo câu hỏi...',
+        description: 'AI đang tạo câu hỏi cho bạn. Vui lòng đợi...',
+      });
+
+      const generatedQuestions = await aiQuizService.generateQuizQuestions(quizId, {
+        topic,
+        grade,
+        numQuestions,
+      });
+
+      // Convert to QuizQuestion format
+      const newQuestions: QuizQuestion[] = generatedQuestions.map(gq => ({
+        questionText: gq.text,
+        questionType: 'MULTIPLE_CHOICE',
+        points: gq.points || 10,
+        options: gq.options.map(opt => ({
+          optionText: opt.text,
+          isCorrect: opt.correct,
+        })),
+      }));
+
+      // Add to existing questions
+      setQuestions([...questions, ...newQuestions]);
+
+      toast({
+        title: 'Thành công!',
+        description: `Đã tạo ${newQuestions.length} câu hỏi mới`,
+      });
+    } catch (error: any) {
+      console.error('Error generating questions:', error);
+      toast({
+        title: 'Lỗi',
+        description: error.message || 'Không thể tạo câu hỏi bằng AI',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 border border-purple-500/30 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl">
@@ -315,16 +360,26 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
                 </CardContent>
               </Card>
 
-                  <Button
-                    onClick={() => {
-                      if (questions.length === 0) addQuestion();
-                      setCurrentStep('questions');
-                    }}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    {questions.length === 0 ? 'Thêm Câu Hỏi Đầu Tiên' : 'Tiếp Tục Đến Câu Hỏi'}
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => {
+                        if (questions.length === 0) addQuestion();
+                        setCurrentStep('questions');
+                      }}
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    >
+                      <Plus className="w-5 h-5 mr-2" />
+                      {questions.length === 0 ? 'Thêm Câu Hỏi Đầu Tiên' : 'Tiếp Tục Đến Câu Hỏi'}
+                    </Button>
+                    <Button
+                      onClick={() => setAiModalOpen(true)}
+                      variant="outline"
+                      className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
+                    >
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Tạo Bằng AI
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -514,6 +569,13 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
           </div>
         </div>
       </div>
+
+      {/* AI Generator Modal */}
+      <AiQuizGeneratorModal
+        open={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onGenerate={handleAiGenerate}
+      />
     </div>
   );
 }

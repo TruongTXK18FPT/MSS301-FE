@@ -14,6 +14,7 @@ const tabLabels: Record<string, string> = {
   analytics: 'Analytics Dashboard',
   users: 'Quản lý Users',
   classrooms: 'Quản lý Lớp học',
+  quizzes: 'Quản lý Quiz',
   tenants: 'Quản lý Tenant',
   subscriptions: 'Quản lý Subscription',
   documents: 'Quản lý Tài liệu PDF',

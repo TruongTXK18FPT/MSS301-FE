@@ -46,6 +46,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Info, Users as UsersIcon, BookMarked, BarChart3 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -64,7 +65,7 @@ const subjectOptions = [
 ];
 
 const gradeOptions = [
-  '6', '7', '8', '9', '10', '11', '12'
+  '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'
 ];
 
 export default function ClassroomManagement() {
@@ -73,10 +74,11 @@ export default function ClassroomManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [gradeFilter, setGradeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedClassroom, setSelectedClassroom] = useState<ClassroomResponse | null>(null);
+  const [detailClassroom, setDetailClassroom] = useState<ClassroomResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -142,12 +144,8 @@ export default function ClassroomManagement() {
       filtered = filtered.filter(classroom => classroom.grade === gradeFilter);
     }
 
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(classroom => classroom.status === statusFilter);
-    }
-
     setFilteredClassrooms(filtered);
-  }, [classrooms, searchTerm, subjectFilter, gradeFilter, statusFilter]);
+  }, [classrooms, searchTerm, subjectFilter, gradeFilter]);
 
   const handleDeleteClassroom = async (classroomId: number) => {
     try {
@@ -164,8 +162,16 @@ export default function ClassroomManagement() {
       const classroom = classrooms.find(c => c.id === classroomId);
       if (!classroom) return;
 
-      const newStatus = classroom.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-      await adminService.updateClassroom(classroomId, { ...classroom, status: newStatus });
+      const payload = {
+        name: classroom.name,
+        description: classroom.description,
+        isPublic: classroom.isPublic,
+        grade: classroom.grade,
+        subject: classroom.subject || 'Toán học',
+        maxStudents: classroom.maxStudents,
+      };
+
+      await adminService.updateClassroom(classroomId, payload);
 
       // Refresh classrooms list
       const response = await adminService.getAllClassrooms(currentPage, pageSize);
@@ -181,7 +187,16 @@ export default function ClassroomManagement() {
       const classroom = classrooms.find(c => c.id === classroomId);
       if (!classroom) return;
 
-      await adminService.updateClassroom(classroomId, { ...classroom, isPublic: !classroom.isPublic });
+      const payload = {
+        name: classroom.name,
+        description: classroom.description,
+        isPublic: !classroom.isPublic,
+        grade: classroom.grade,
+        subject: classroom.subject || 'Toán học',
+        maxStudents: classroom.maxStudents,
+      };
+
+      await adminService.updateClassroom(classroomId, payload);
 
       // Refresh classrooms list
       const response = await adminService.getAllClassrooms(currentPage, pageSize);
@@ -194,8 +209,8 @@ export default function ClassroomManagement() {
 
   const handleCreateClassroom = async () => {
     // Validate form data
-    if (!createFormData.name || !createFormData.grade || !createFormData.subject) {
-      setError('Vui lòng điền đầy đủ thông tin');
+    if (!createFormData.name || !createFormData.grade) {
+      setError('Vui lòng điền tên và khối lớp');
       return;
     }
 
@@ -239,8 +254,8 @@ export default function ClassroomManagement() {
 
   const handleEditClassroom = async () => {
     // Validate form data
-    if (!editFormData.name || !editFormData.grade || !editFormData.subject) {
-      setError('Vui lòng điền đầy đủ thông tin');
+    if (!editFormData.name || !editFormData.grade) {
+      setError('Vui lòng điền tên và khối lớp');
       return;
     }
 
@@ -252,11 +267,12 @@ export default function ClassroomManagement() {
         name: editFormData.name,
         grade: editFormData.grade,
         description: editFormData.description,
-        subject: editFormData.subject,
+        subject: editFormData.subject || 'Toán học',
         maxStudents: parseInt(editFormData.maxStudents.toString()),
         isPublic: editFormData.isPublic
       };
 
+      console.log('Update payload:', payload);
       await adminService.updateClassroom(selectedClassroom.id, payload);
 
       // Refresh classrooms list
@@ -269,7 +285,11 @@ export default function ClassroomManagement() {
       setError(null);
     } catch (err: any) {
       console.error('Failed to update classroom:', err);
-      setError(err?.response?.data?.message || 'Không thể cập nhật lớp học. Vui lòng thử lại.');
+      const errorMessage = err?.response?.data?.message
+        || err?.response?.data?.error
+        || err?.message
+        || 'Không thể cập nhật lớp học. Vui lòng thử lại.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -281,7 +301,7 @@ export default function ClassroomManagement() {
       name: '',
       grade: '',
       description: '',
-      subject: '',
+      subject: 'Toán học', // Set default
       maxStudents: 30,
       isPublic: false
     });
@@ -293,9 +313,9 @@ export default function ClassroomManagement() {
   const openEditDialog = (classroom: ClassroomResponse) => {
     setEditFormData({
       name: classroom.name,
-      grade: classroom.grade,
+      grade: classroom.grade || '',
       description: classroom.description,
-      subject: classroom.subject,
+      subject: classroom.subject || 'Toán học',
       maxStudents: classroom.maxStudents,
       isPublic: classroom.isPublic
     });
@@ -304,15 +324,10 @@ export default function ClassroomManagement() {
     setIsEditDialogOpen(true);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toUpperCase()) {
-      case 'ACTIVE':
-        return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'INACTIVE':
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-    }
+  // Open detail dialog
+  const openDetailDialog = (classroom: ClassroomResponse) => {
+    setDetailClassroom(classroom);
+    setIsDetailDialogOpen(true);
   };
 
   const getSubjectColor = (subject: string) => {
@@ -445,16 +460,6 @@ export default function ClassroomManagement() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-slate-700/50 border-purple-500/30 text-white">
-                <SelectValue placeholder="Chọn trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="ACTIVE">Hoạt động</SelectItem>
-                <SelectItem value="INACTIVE">Không hoạt động</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -481,7 +486,6 @@ export default function ClassroomManagement() {
                   <TableHead className="text-slate-300">Giáo viên</TableHead>
                   <TableHead className="text-slate-300">Môn học</TableHead>
                   <TableHead className="text-slate-300">Học sinh</TableHead>
-                  <TableHead className="text-slate-300">Trạng thái</TableHead>
                   <TableHead className="text-slate-300">Công khai</TableHead>
                   <TableHead className="text-slate-300">Ngày tạo</TableHead>
                   <TableHead className="text-slate-300">Thao tác</TableHead>
@@ -553,14 +557,6 @@ export default function ClassroomManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={getStatusColor(classroom.status || 'ACTIVE')}
-                        >
-                          {classroom.status === 'ACTIVE' ? 'Hoạt động' : classroom.status === 'INACTIVE' ? 'Không hoạt động' : 'Chưa có'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={classroom.isPublic}
@@ -596,22 +592,9 @@ export default function ClassroomManagement() {
                               Chỉnh sửa
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleToggleStatus(classroom.id)}
+                              onClick={() => openDetailDialog(classroom)}
                               className="text-slate-300 hover:bg-purple-500/20 hover:text-white"
                             >
-                              {classroom.status === 'ACTIVE' ? (
-                                <>
-                                  <Lock className="w-4 h-4 mr-2" />
-                                  Vô hiệu hóa
-                                </>
-                              ) : (
-                                <>
-                                  <Unlock className="w-4 h-4 mr-2" />
-                                  Kích hoạt
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-slate-300 hover:bg-purple-500/20 hover:text-white">
                               <Eye className="w-4 h-4 mr-2" />
                               Xem chi tiết
                             </DropdownMenuItem>
@@ -829,6 +812,150 @@ export default function ClassroomManagement() {
               {isLoading ? 'Đang cập nhật...' : 'Cập nhật'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Classroom Modal - Galaxy Theme */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 border-purple-500/30 text-white max-w-2xl shadow-2xl">
+          {/* Galaxy Background Effect */}
+          <div className="absolute inset-0 overflow-hidden rounded-lg">
+            <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-pink-500/10 rounded-full blur-2xl"></div>
+          </div>
+
+          <div className="relative z-10">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent flex items-center gap-2">
+                <BookMarked className="w-6 h-6 text-purple-400" />
+                Chi tiết Lớp học
+              </DialogTitle>
+            </DialogHeader>
+
+            {detailClassroom && (
+              <div className="space-y-6 py-4">
+                {/* Header Section */}
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-purple-500/20">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-white mb-2">{detailClassroom.name}</h2>
+                      <p className="text-slate-300 text-sm">{detailClassroom.description}</p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`${
+                        detailClassroom.isPublic
+                          ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                          : 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                      }`}
+                    >
+                      {detailClassroom.isPublic ? 'Công khai' : 'Riêng tư'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Information Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Môn học */}
+                  <div className="bg-slate-800/40 rounded-lg p-4 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BookOpen className="w-4 h-4 text-purple-400" />
+                      <span className="text-sm text-slate-400">Môn học</span>
+                    </div>
+                    <p className="text-lg font-semibold text-white">{detailClassroom.subject || 'Toán học'}</p>
+                  </div>
+
+                  {/* Khối lớp */}
+                  <div className="bg-slate-800/40 rounded-lg p-4 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <GraduationCap className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm text-slate-400">Khối lớp</span>
+                    </div>
+                    <p className="text-lg font-semibold text-white">{detailClassroom.grade ? `Lớp ${detailClassroom.grade}` : 'Chưa xác định'}</p>
+                  </div>
+
+                  {/* Học sinh */}
+                  <div className="bg-slate-800/40 rounded-lg p-4 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <UsersIcon className="w-4 h-4 text-pink-400" />
+                      <span className="text-sm text-slate-400">Số học sinh</span>
+                    </div>
+                    <p className="text-lg font-semibold text-white">
+                      {detailClassroom.currentStudents}/{detailClassroom.maxStudents}
+                    </p>
+                    <div className="w-full bg-slate-700 rounded-full h-2 mt-2">
+                      <div
+                        className="bg-gradient-to-r from-pink-500 to-purple-500 h-2 rounded-full"
+                        style={{
+                          width: `${(detailClassroom.currentStudents / detailClassroom.maxStudents) * 100}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mã tham gia */}
+                  <div className="bg-slate-800/40 rounded-lg p-4 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock className="w-4 h-4 text-yellow-400" />
+                      <span className="text-sm text-slate-400">Mã tham gia</span>
+                    </div>
+                    <p className="text-lg font-mono font-bold text-yellow-300">{detailClassroom.joinCode}</p>
+                  </div>
+                </div>
+
+                {/* Statistics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-800/40 rounded-lg p-3 border border-blue-500/20 text-center">
+                    <BarChart3 className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-white">{detailClassroom.assignmentCount || 0}</p>
+                    <p className="text-xs text-slate-400">Bài tập</p>
+                  </div>
+
+                  <div className="bg-slate-800/40 rounded-lg p-3 border border-green-500/20 text-center">
+                    <BookMarked className="w-4 h-4 text-green-400 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-white">{detailClassroom.quizCount || 0}</p>
+                    <p className="text-xs text-slate-400">Quiz</p>
+                  </div>
+
+                  <div className="bg-slate-800/40 rounded-lg p-3 border border-purple-500/20 text-center">
+                    <Info className="w-4 h-4 text-purple-400 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-white">{detailClassroom.contentCount || 0}</p>
+                    <p className="text-xs text-slate-400">Nội dung</p>
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                <div className="bg-slate-800/40 rounded-lg p-4 border border-purple-500/20">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400" />
+                      <span className="text-slate-400">Ngày tạo</span>
+                    </div>
+                    <span className="text-white">{new Date(detailClassroom.createdAt).toLocaleDateString('vi-VN')}</span>
+                  </div>
+                  {detailClassroom.updatedAt && (
+                    <div className="flex items-center justify-between text-sm mt-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <span className="text-slate-400">Cập nhật lần cuối</span>
+                      </div>
+                      <span className="text-white">{new Date(detailClassroom.updatedAt).toLocaleDateString('vi-VN')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                onClick={() => setIsDetailDialogOpen(false)}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                Đóng
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

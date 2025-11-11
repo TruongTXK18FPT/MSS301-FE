@@ -1,9 +1,19 @@
+'use client';
+
 import Link from 'next/link';
 import { Button } from './ui/button';
 import Logo from './logo';
 import { Github, Facebook, Twitter, Youtube } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 const Footer = () => {
+  const pathname = usePathname();
+  
+  // Ẩn footer trên trang admin
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+  
   return (
     <footer className="bg-surface/50 border-t border-white/5 backdrop-blur-md">
       <div className="container mx-auto px-4">

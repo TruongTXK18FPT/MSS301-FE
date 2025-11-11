@@ -80,6 +80,13 @@ const NavLink = ({ href, label, icon: Icon, highlight = false, isPremium = false
 const Navbar = () => {
   const { token, logout, role } = useAuth();
   const { canCreateClassroom } = usePermissions();
+  const pathname = usePathname();
+  
+  // Ẩn navbar trên trang admin
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-surface/80 backdrop-blur-lg">
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">

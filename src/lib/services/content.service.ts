@@ -98,7 +98,25 @@ class ContentService {
     grade?: string;
     isPublic?: boolean;
   }): Promise<ContentItem[]> {
-    const response = await contentApi.get(this.baseUrl, { params });
+    // If isPublic is true, use the /public endpoint
+    if (params?.isPublic) {
+      const response = await contentApi.get(`${this.baseUrl}/public`, { 
+        params: {
+          type: params.type,
+          subject: params.subject,
+          grade: params.grade
+        }
+      });
+      return response.data.result || response.data;
+    }
+    
+    // Otherwise use /me for user's own content
+    const response = await contentApi.get(`${this.baseUrl}/me`, { 
+      params: {
+        classroomId: params?.classroomId,
+        type: params?.type
+      }
+    });
     return response.data.result || response.data;
   }
 
@@ -116,7 +134,15 @@ class ContentService {
 
   async createContentItem(data: Partial<ContentItem>): Promise<ContentItem> {
     // Extract classroomId to send as query param (backend expects @RequestParam)
-    const { classroomId, ...bodyData } = data;
+    const { classroomId, tags, ...rest } = data;
+    
+    // Backend expects tags as comma-separated string
+    const bodyData = {
+      ...rest,
+      tags: Array.isArray(tags) ? tags.join(',') : (tags || ''),
+      content: rest.content || '', // Ensure content is not null
+    };
+    
     const response = await contentApi.post(this.baseUrl, bodyData, {
       params: classroomId ? { classroomId } : undefined
     });

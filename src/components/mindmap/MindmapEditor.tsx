@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain, Save, Download, Share, Edit, Trash2, Plus, Minus, X, Sparkles, Zap, Target, Eye, Calculator, FileQuestion, Lightbulb, Globe, Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Brain, Save, Edit, Trash2, Plus, Minus, X, Sparkles, Target, Calculator, FileQuestion, Lightbulb, Globe, Lock, Eye } from "lucide-react";
 import { mindmapService } from '@/lib/services/mindmapService';
+import { useToast } from '@/hooks/use-toast';
 import NodeDetailView from './NodeDetailView';
 import ExerciseGeneratorForm from './ExerciseGeneratorForm';
 import ConceptGeneratorForm from './ConceptGeneratorForm';
@@ -76,6 +78,7 @@ interface MindmapEdge {
 interface MindmapEditorProps {
   readonly mindmap: {
     id: number;
+    userId?: number;
     title: string;
     description?: string;
     grade: string;
@@ -87,6 +90,7 @@ interface MindmapEditorProps {
   onSave?: (mindmap: any) => void;
   onDelete?: (id: number) => void;
   onClose?: () => void;
+  readOnly?: boolean; // Chế độ chỉ xem, không cho edit
 }
 
 // Convert backend nodes to frontend format
@@ -178,8 +182,9 @@ const calculateNodeSize = (ctx: CanvasRenderingContext2D, text: string, baseSize
   return Math.min(minRadius * zoom, 120 * zoom); // Cap at 120 to prevent huge nodes
 };
 
-export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Readonly<MindmapEditorProps>) {
+export default function MindmapEditor({ mindmap, onSave, onDelete, onClose, readOnly = false }: Readonly<MindmapEditorProps>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { toast } = useToast();
 
   const [nodes, setNodes] = useState<MindmapNode[]>([]);
   const [edges, setEdges] = useState<MindmapEdge[]>([]);
@@ -201,6 +206,9 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
   const [showConceptGenerator, setShowConceptGenerator] = useState(false);
   const [showFormulaGenerator, setShowFormulaGenerator] = useState(false);
   const [isLoadingNodes, setIsLoadingNodes] = useState(true);
+  const [currentVisibility, setCurrentVisibility] = useState<'PRIVATE' | 'PUBLIC' | 'CLASSROOM'>(mindmap.visibility || 'PRIVATE');
+  const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
   
   // Store node entity data (concepts, formulas, exercises)
   const [nodeConcepts, setNodeConcepts] = useState<Record<number, ConceptResponse[]>>({});
@@ -355,7 +363,10 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
 
       // Try to load nodes from backend
       try {
-        const backendNodes = await mindmapService.getMindmapNodes(mindmap.id);
+        // Sử dụng viewMindmapNodes nếu readOnly, getMindmapNodes nếu không
+        const backendNodes = readOnly 
+          ? await mindmapService.viewMindmapNodes(mindmap.id)
+          : await mindmapService.getMindmapNodes(mindmap.id);
         console.log('[MindmapEditor] Loaded nodes from backend:', backendNodes);
 
         if (backendNodes && backendNodes.length > 0) {
@@ -613,30 +624,44 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
 
   const toggleVisibility = async () => {
     try {
-      const currentVisibility = mindmap.visibility || 'PRIVATE';
+      setIsTogglingVisibility(true);
       const newVisibility = currentVisibility === 'PRIVATE' ? 'PUBLIC' : 'PRIVATE';
       
-      // Update with title to pass validation
+      // Update on server
       await mindmapService.updateMindmap(mindmap.id, { 
         title: mindmap.title,
         visibility: newVisibility 
       });
       
-      // Update local mindmap object
-      (mindmap as any).visibility = newVisibility;
+      // Update local state
+      setCurrentVisibility(newVisibility);
       
-      // Show clear message about the NEW state
-      const message = newVisibility === 'PUBLIC' 
-        ? '✅ Đã chuyển sang Công khai - Mọi người có thể xem' 
-        : '🔒 Đã chuyển sang Riêng tư - Chỉ bạn có thể xem';
+      // Show success toast
+      toast({
+        title: newVisibility === 'PUBLIC' ? '✅ Đã chuyển sang Công khai' : '🔒 Đã chuyển sang Riêng tư',
+        description: newVisibility === 'PUBLIC' 
+          ? 'Mindmap của bạn giờ đây có thể được mọi người xem' 
+          : 'Mindmap của bạn giờ đây chỉ bạn có thể xem',
+        duration: 3000,
+      });
       
-      alert(message);
+      // Close dialog
+      setShowVisibilityDialog(false);
       
-      // Reload page to reflect changes
-      window.location.reload();
+      // Notify parent component if callback exists
+      if (onSave) {
+        onSave({ ...mindmap, visibility: newVisibility });
+      }
     } catch (error) {
       console.error('Error updating visibility:', error);
-      alert('❌ Có lỗi khi thay đổi chế độ hiển thị');
+      toast({
+        title: '❌ Lỗi',
+        description: 'Không thể thay đổi chế độ hiển thị. Vui lòng thử lại.',
+        variant: 'destructive',
+        duration: 3000,
+      });
+    } finally {
+      setIsTogglingVisibility(false);
     }
   };
 
@@ -1026,40 +1051,54 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleVisibility}
-              className={mindmap.visibility === 'PUBLIC' 
-                ? "bg-green-500/20 backdrop-blur border-green-300/50 text-green-200 hover:bg-green-500/30"
-                : "bg-orange-500/20 backdrop-blur border-orange-300/50 text-orange-200 hover:bg-orange-500/30"
-              }
-            >
-              {mindmap.visibility === 'PUBLIC' ? (
-                <><Globe className="h-4 w-4 mr-2" />Công khai</>
-              ) : (
-                <><Lock className="h-4 w-4 mr-2" />Riêng tư</>
-              )}
-            </Button>
-            <Button
-              variant={isEditing ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-              className={isEditing ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg hover:shadow-xl transition-all" : "bg-white/10 backdrop-blur border-purple-300/50 text-white hover:bg-white/20"}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              {isEditing ? 'Thoát' : 'Chỉnh sửa'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={saveMindmap}
-              disabled={isSaving}
-              className="bg-white/10 backdrop-blur border-blue-300/50 text-white hover:bg-blue-500/20 hover:border-blue-400"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isSaving ? 'Đang lưu...' : 'Lưu'}
-            </Button>
+            {/* Chỉ hiện nút chỉnh sửa khi không phải readOnly */}
+            {!readOnly && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowVisibilityDialog(true)}
+                  className={currentVisibility === 'PUBLIC' 
+                    ? "bg-green-500/20 backdrop-blur border-green-300/50 text-green-200 hover:bg-green-500/30"
+                    : "bg-orange-500/20 backdrop-blur border-orange-300/50 text-orange-200 hover:bg-orange-500/30"
+                  }
+                >
+                  {currentVisibility === 'PUBLIC' ? (
+                    <><Globe className="h-4 w-4 mr-2" />Công khai</>
+                  ) : (
+                    <><Lock className="h-4 w-4 mr-2" />Riêng tư</>
+                  )}
+                </Button>
+                <Button
+                  variant={isEditing ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsEditing(!isEditing)}
+                  className={isEditing ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg hover:shadow-xl transition-all" : "bg-white/10 backdrop-blur border-purple-300/50 text-white hover:bg-white/20"}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  {isEditing ? 'Thoát' : 'Chỉnh sửa'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={saveMindmap}
+                  disabled={isSaving}
+                  className="bg-white/10 backdrop-blur border-blue-300/50 text-white hover:bg-blue-500/20 hover:border-blue-400"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Đang lưu...' : 'Lưu'}
+                </Button>
+              </>
+            )}
+            
+            {/* Hiện badge "Chỉ xem" khi readOnly */}
+            {readOnly && (
+              <Badge className="bg-blue-500/20 border-blue-400/30 text-blue-200 px-4 py-2">
+                <Eye className="h-4 w-4 mr-2" />
+                Chế độ xem
+              </Badge>
+            )}
+            
             {onClose && (
               <Button variant="ghost" size="sm" onClick={onClose} className="text-white/80 hover:text-white hover:bg-white/10 backdrop-blur">
                 <X className="h-4 w-4 mr-2" />
@@ -1070,8 +1109,8 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
         </div>
       </CardHeader>
 
-      {/* Toolbar */}
-      {isEditing && (
+      {/* Toolbar - chỉ hiện khi không phải readOnly */}
+      {isEditing && !readOnly && (
         <div className="px-6 py-4 border-b border-purple-600/30 bg-gradient-to-r from-purple-900/70 via-purple-800/70 to-pink-800/70 shadow-lg backdrop-blur-xl">
           <div className="flex items-center gap-2 flex-wrap">
             <Button
@@ -1506,6 +1545,71 @@ export default function MindmapEditor({ mindmap, onSave, onDelete, onClose }: Re
           onClose={() => setShowFormulaGenerator(false)}
         />
       )}
+
+      {/* Visibility Toggle Dialog */}
+      <Dialog open={showVisibilityDialog} onOpenChange={setShowVisibilityDialog}>
+        <DialogContent className="sm:max-w-[425px] bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              {currentVisibility === 'PUBLIC' ? (
+                <><Lock className="h-5 w-5 text-orange-500" /> Chuyển sang Riêng tư</>
+              ) : (
+                <><Globe className="h-5 w-5 text-green-500" /> Chuyển sang Công khai</>
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-base pt-2">
+              {currentVisibility === 'PUBLIC' ? (
+                <div className="space-y-2">
+                  <p className="text-gray-700">
+                    Bạn có chắc chắn muốn chuyển mindmap này sang <strong className="text-orange-600">Riêng tư</strong>?
+                  </p>
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
+                    <p className="text-sm text-orange-800">
+                      <Lock className="h-4 w-4 inline mr-1" />
+                      Sau khi chuyển, chỉ bạn mới có thể xem mindmap này.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-gray-700">
+                    Bạn có chắc chắn muốn chuyển mindmap này sang <strong className="text-green-600">Công khai</strong>?
+                  </p>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
+                    <p className="text-sm text-green-800">
+                      <Globe className="h-4 w-4 inline mr-1" />
+                      Sau khi chuyển, mọi người đều có thể xem mindmap này.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowVisibilityDialog(false)}
+              disabled={isTogglingVisibility}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={toggleVisibility}
+              disabled={isTogglingVisibility}
+              className={currentVisibility === 'PUBLIC' 
+                ? "bg-orange-500 hover:bg-orange-600 text-white"
+                : "bg-green-500 hover:bg-green-600 text-white"
+              }
+            >
+              {isTogglingVisibility ? (
+                <>Đang xử lý...</>
+              ) : (
+                <>Xác nhận</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

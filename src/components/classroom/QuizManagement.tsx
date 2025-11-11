@@ -24,9 +24,11 @@ import {
 } from '@/components/ui/select';
 import {
   Plus, Search, Eye, Edit, Trash2, Copy,
-  Clock, FileQuestion, CheckCircle, Play, BarChart
+  Clock, FileQuestion, CheckCircle, Play, BarChart, Sparkles
 } from 'lucide-react';
 import QuizBuilder from './QuizBuilder';
+import AiQuizGeneratorModal from './AiQuizGeneratorModal';
+import { aiQuizService } from '@/services/ai-quiz.service';
 
 interface QuizManagementProps {
   classroomId: number;
@@ -87,6 +89,10 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
   const [questionBuilderOpen, setQuestionBuilderOpen] = useState(false);
   const [currentQuizId, setCurrentQuizId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+
+  // AI Quiz Generator
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
 
   useEffect(() => {
     loadQuizzes();
@@ -249,6 +255,67 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
     setQuestionBuilderOpen(true);
   };
 
+  const handleCreateWithAI = async (topic: string, grade: string, numQuestions: number) => {
+    try {
+      setGeneratingAI(true);
+
+      // 1. Tạo quiz mới trước
+      const contentData = {
+        title: topic,
+        description: `Quiz được tạo bằng AI về ${topic} cho lớp ${grade}`,
+        type: 'QUIZ' as const,
+        content: JSON.stringify({
+          timeLimitSec: 1800,
+          shuffleQuestions: true,
+        }),
+        classroomId: classroomId,
+        isPublic: false,
+      };
+
+      const created = await contentService.createContentItem(contentData);
+
+      // 2. Tạo quiz structure
+      await contentService.createOrUpdateQuiz(created.id, {
+        timeLimitSec: 1800,
+        shuffleQuestions: true,
+        questions: [],
+      });
+
+      // 3. Generate questions với AI
+      const generatedQuestions = await aiQuizService.generateQuizQuestions(created.id, {
+        topic,
+        grade,
+        numQuestions,
+      });
+
+      // 4. Save questions
+      await contentService.createOrUpdateQuiz(created.id, {
+        timeLimitSec: 1800,
+        shuffleQuestions: true,
+        questions: generatedQuestions.map((gq: any, idx: number) => ({
+          questionText: gq.text,
+          questionType: gq.type,
+          points: gq.points || 10,
+          orderIndex: idx,
+          options: gq.options.map((opt: any, oIdx: number) => ({
+            optionText: opt.text,
+            isCorrect: opt.correct,
+            orderIndex: oIdx,
+          })),
+        })),
+      });
+
+      alert(`✨ Đã tạo quiz với ${generatedQuestions.length} câu hỏi bằng AI!`);
+      await loadQuizzes();
+    } catch (error: any) {
+      console.error('Error creating quiz with AI:', error);
+      alert(error.message || 'Có lỗi khi tạo quiz bằng AI');
+      throw error;
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   const handleDuplicateQuiz = async (quiz: Quiz) => {
     try {
       // Create duplicate
@@ -322,10 +389,23 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
           <div className="flex items-center justify-between">
             <CardTitle>Quiz trắc nghiệm ({quizzes.length})</CardTitle>
             {isTeacher && (
-              <Button onClick={handleCreateQuiz}>
-                <Plus className="w-4 h-4 mr-2" />
-                Tạo quiz mới
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleCreateQuiz}
+                  variant="outline"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tạo thủ công
+                </Button>
+                <Button 
+                  onClick={() => setAiModalOpen(true)}
+                  disabled={generatingAI}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Tạo bằng AI
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -587,6 +667,13 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
           }}
         />
       )}
+
+      {/* AI Quiz Generator Modal */}
+      <AiQuizGeneratorModal
+        open={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onGenerate={handleCreateWithAI}
+      />
     </div>
   );
 }

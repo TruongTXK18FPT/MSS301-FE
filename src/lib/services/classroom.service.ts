@@ -236,6 +236,110 @@ class ClassroomService {
       throw error;
     }
   }
+
+  // Classroom Summary (NEW)
+  async getClassroomSummary(classroomId: number): Promise<any> {
+    try {
+      const response = await classroomApi.get<ApiResponse<any>>(`/${classroomId}/summary`);
+      return response.data.result || {};
+    } catch (error: any) {
+      console.error('Error fetching classroom summary:', error);
+      throw error;
+    }
+  }
+
+  // Classroom Contents (NEW)
+  async getClassroomContents(classroomId: number, studentView: boolean = false): Promise<any[]> {
+    try {
+      const endpoint = studentView 
+        ? `/${classroomId}/contents/student-view`
+        : `/${classroomId}/contents`;
+      const response = await classroomApi.get<ApiResponse<any[]>>(endpoint);
+      return response.data.result || [];
+    } catch (error: any) {
+      console.error('Error fetching classroom contents:', error);
+      return [];
+    }
+  }
+
+  // Submissions (NEW)
+  async getAllSubmissions(classroomContentId: number): Promise<any[]> {
+    try {
+      const response = await classroomApi.get<ApiResponse<any[]>>(
+        `/contents/${classroomContentId}/submissions/all`
+      );
+      return response.data.result || [];
+    } catch (error: any) {
+      console.error('Error fetching submissions:', error);
+      return [];
+    }
+  }
+
+  // Grading (NEW)
+  async gradeSubmission(submissionId: number, points: number, feedback?: string): Promise<any> {
+    try {
+      const response = await classroomApi.post<ApiResponse<any>>(
+        `/submissions/${submissionId}/grade`,
+        { points, feedback }
+      );
+      return response.data.result;
+    } catch (error: any) {
+      console.error('Error grading submission:', error);
+      throw error;
+    }
+  }
+
+  // Lesson CRUD
+  async createLesson(classroomId: number, data: {
+    title: string;
+    description?: string;
+    content: string;
+    type: string; // 'LESSON'
+    visible?: boolean;
+    publishAt?: string;
+    orderIndex?: number;
+  }): Promise<any> {
+    const response = await classroomApi.post(
+      `/${classroomId}/contents/create`,
+      data
+    );
+    return response.data.result || response.data;
+  }
+
+  async updateLesson(classroomId: number, contentId: number, data: {
+    title: string;
+    description?: string;
+    content: string;
+    type: string;
+    visible?: boolean;
+    publishAt?: string;
+  }): Promise<any> {
+    const response = await classroomApi.put(
+      `/${classroomId}/contents/update/${contentId}`,
+      data
+    );
+    return response.data.result || response.data;
+  }
+
+  async deleteLesson(classroomId: number, contentId: number): Promise<void> {
+    await classroomApi.delete(
+      `/${classroomId}/contents/delete/${contentId}`
+    );
+  }
+
+  // Attach existing content (mindmap/quiz/assignment) to classroom
+  async attachContent(classroomId: number, data: {
+    contentId: number;
+    type: string; // 'RESOURCE' | 'QUIZ' | 'ASSIGNMENT'
+    visible?: boolean;
+    orderIndex?: number;
+  }): Promise<any> {
+    const response = await classroomApi.post(
+      `/${classroomId}/contents/attach`,
+      data
+    );
+    return response.data.result || response.data;
+  }
 }
 
 export const classroomService = new ClassroomService();

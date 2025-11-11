@@ -13,8 +13,9 @@ import ClassroomManagement from '@/components/admin/classroom-management';
 import TenantManagement from '@/components/admin/tenant-management';
 import SubscriptionManagement from '@/components/admin/subscription-management';
 import { DocumentList } from '@/components/admin/document-management';
+import QuizManagementPage from './quiz/page';
 
-type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions' | 'documents';
+type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions' | 'documents' | 'quizzes';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('analytics');
@@ -30,6 +31,8 @@ export default function AdminDashboard() {
         return <TeacherRegistrationsPage />;
       case 'classrooms':
         return <ClassroomManagement />;
+      case 'quizzes':
+        return <QuizManagementPage />;
       case 'tenants':
         return <TenantManagement />;
       case 'subscriptions':

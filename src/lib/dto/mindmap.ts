@@ -1,6 +1,7 @@
 // Mindmap DTOs
 export interface MindmapResponse {
   id: number;
+  userId?: number;
   title: string;
   description?: string;
   grade: string;

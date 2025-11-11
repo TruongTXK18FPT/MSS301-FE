@@ -10,13 +10,14 @@ import {
   X,
   Settings,
   LogOut,
-  FileText
+  FileText,
+  Brain
 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions' | 'documents';
+type AdminTab = 'analytics' | 'users' | 'teacher-registrations' | 'classrooms' | 'tenants' | 'subscriptions' | 'documents' | 'quizzes';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -49,6 +50,12 @@ const menuItems = [
     label: 'Quản lý Lớp học',
     icon: GraduationCap,
     description: 'Quản lý lớp học'
+  },
+  {
+    id: 'quizzes',
+    label: 'Quản lý Quiz',
+    icon: Brain,
+    description: 'Quản lý bài quiz'
   },
   {
     id: 'tenants',

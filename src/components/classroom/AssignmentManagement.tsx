@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { contentService } from '@/lib/services/content.service';
+import { classroomService } from '@/lib/services/classroom.service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,55 +81,31 @@ export default function AssignmentManagement({ classroomId, isTeacher }: Assignm
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const allContents = await contentService.getContentItemsByClassroom(classroomId);
-      const assignmentItems = allContents.filter((item: any) => item.type === 'ASSIGNMENT');
+      
+      // Use new classroom summary API
+      const summary = await classroomService.getClassroomSummary(classroomId);
+      
+      // Filter content items that are assignments
+      const assignmentItems = summary.contentItems?.filter((item: any) => item.type === 'ASSIGNMENT') || [];
       
       // Transform to Assignment format
-      const transformedAssignments: Assignment[] = await Promise.all(
-        assignmentItems.map(async (item: any) => {
-          let parsedContent: any = {};
-          try {
-            parsedContent = typeof item.content === 'string' ? JSON.parse(item.content) : item.content;
-          } catch (e) {
-            parsedContent = { instructions: item.content };
-          }
-
-          // Get submission stats
-          let submissionCount = 0;
-          let gradedCount = 0;
-          let averageScore: number | undefined;
-
-          try {
-            const submissions = await contentService.getSubmissions(item.id);
-            submissionCount = submissions.length;
-            gradedCount = submissions.filter((s: any) => s.status === 'GRADED').length;
-            
-            const gradedSubmissions = submissions.filter((s: any) => s.grade != null);
-            if (gradedSubmissions.length > 0) {
-              const totalScore = gradedSubmissions.reduce((sum: number, s: any) => sum + (s.grade || 0), 0);
-              averageScore = totalScore / gradedSubmissions.length;
-            }
-          } catch (error) {
-            console.error('Error loading submission stats:', error);
-          }
-
-          return {
-            id: item.id,
-            title: item.title,
-            description: item.description || '',
-            instructions: parsedContent.instructions || item.content || '',
-            submissionType: parsedContent.submissionType || 'BOTH',
-            dueDate: parsedContent.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            totalPoints: parsedContent.totalPoints || 10,
-            attachmentFileIds: parsedContent.attachmentFileIds || [],
-            status: item.status || 'published',
-            createdAt: item.createdAt,
-            submissionCount,
-            gradedCount,
-            averageScore,
-          };
-        })
-      );
+      const transformedAssignments: Assignment[] = assignmentItems.map((item: any) => {
+        return {
+          id: item.id,
+          title: item.title || `Assignment ${item.contentId}`,
+          description: item.description || '',
+          instructions: item.description || '', // TODO: Get full details from assignment service
+          submissionType: 'BOTH' as const,
+          dueDate: item.dueAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          totalPoints: item.maxPoints || 10,
+          attachmentFiles: [],
+          status: item.visible ? 'published' : 'draft',
+          createdAt: item.createdAt,
+          submissionCount: item.submissionCount || 0,
+          gradedCount: 0, // TODO: Get from grading data
+          averageScore: undefined,
+        };
+      });
 
       setAssignments(transformedAssignments);
     } catch (error) {

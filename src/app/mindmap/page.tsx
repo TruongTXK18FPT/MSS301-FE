@@ -9,15 +9,19 @@ import { useState, useEffect } from "react";
 import { mindmapService } from "@/lib/services/mindmapService";
 import MindmapCreateForm from "@/components/mindmap/MindmapCreateForm";
 import MindmapEditor from "@/components/mindmap/MindmapEditor";
+import { useAuth } from "@/context/auth-context";
 
 // Removed hardcoded templates - now only showing user-created mindmaps
 
 export default function MindMapPage() {
+  const { id: currentUserId } = useAuth(); // Lấy userId hiện tại
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("my-mindmaps");
   const [brainIcons, setBrainIcons] = useState<Array<{left: string, top: string, animationDelay: string, animationDuration: string}>>([]);
 
   const [userMindmaps, setUserMindmaps] = useState<any[]>([]);
+  const [publicMindmaps, setPublicMindmaps] = useState<any[]>([]);
+  const [publicPagination, setPublicPagination] = useState({ page: 0, totalPages: 0, totalElements: 0 });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingMindmap, setEditingMindmap] = useState<any>(null);
   const [viewingMindmap, setViewingMindmap] = useState<any>(null);
@@ -37,12 +41,33 @@ export default function MindMapPage() {
     loadMindmaps();
   }, []);
 
+  useEffect(() => {
+    // Load public mindmaps when tab is selected
+    if (selectedCategory === 'public') {
+      loadPublicMindmaps();
+    }
+  }, [selectedCategory]);
+
   const loadMindmaps = async () => {
     try {
       const mindmaps = await mindmapService.getUserMindmaps();
       setUserMindmaps(mindmaps);
     } catch (error) {
       console.error('Failed to load mindmaps:', error);
+    }
+  };
+
+  const loadPublicMindmaps = async (page: number = 0) => {
+    try {
+      const result = await mindmapService.getPublicMindmaps(page, 20);
+      setPublicMindmaps(result.content || []);
+      setPublicPagination({
+        page,
+        totalPages: result.totalPages || 0,
+        totalElements: result.totalElements || 0
+      });
+    } catch (error) {
+      console.error('Failed to load public mindmaps:', error);
     }
   };
 
@@ -58,10 +83,12 @@ export default function MindMapPage() {
 
   const handleViewMindmap = async (mindmap: any) => {
     try {
-      const fullMindmap = await mindmapService.getMindmapById(mindmap.id);
+      // Sử dụng viewMindmap để có thể xem cả mindmap PUBLIC
+      const fullMindmap = await mindmapService.viewMindmap(mindmap.id);
       setViewingMindmap(fullMindmap);
     } catch (error) {
       console.error('Failed to load mindmap:', error);
+      alert('❌ Không thể xem mindmap này. Vui lòng thử lại.');
     }
   };
 
@@ -138,13 +165,22 @@ export default function MindMapPage() {
     }
   };
 
-  const categories = ["all", "Cá nhân"];
+  const categories = [
+    { value: "my-mindmaps", label: "Của tôi" },
+    { value: "public", label: "Công khai" }
+  ];
 
   const filteredUserMindmaps = userMindmaps.filter(mindmap =>
     mindmap && 
-    (selectedCategory === "all" || selectedCategory === "Cá nhân") &&
     mindmap.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredPublicMindmaps = publicMindmaps.filter(mindmap =>
+    mindmap && 
+    mindmap.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const currentMindmaps = selectedCategory === 'public' ? filteredPublicMindmaps : filteredUserMindmaps;
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -206,16 +242,16 @@ export default function MindMapPage() {
           <div className="flex gap-2">
             {categories.map((category) => (
               <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category)}
+                key={category.value}
+                variant={selectedCategory === category.value ? "default" : "outline"}
+                onClick={() => setSelectedCategory(category.value)}
                 className={`rounded-xl ${
-                  selectedCategory === category
+                  selectedCategory === category.value
                     ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                     : "bg-black/30 border-purple-400/30 text-purple-200 hover:bg-purple-500/20"
                 }`}
               >
-                {category === "all" ? "Tất cả" : category}
+                {category.label}
               </Button>
             ))}
           </div>
@@ -229,18 +265,23 @@ export default function MindMapPage() {
           </Button>
         </div>
 
-        {/* User Mindmaps Section */}
+        {/* User/Public Mindmaps Section */}
           <div>
             <div className="flex items-center gap-3 mb-6">
               <Brain className="size-6 text-pink-400" />
-              <h2 className="text-2xl font-bold text-white">Mindmap của bạn</h2>
+              <h2 className="text-2xl font-bold text-white">
+                {selectedCategory === 'public' ? 'Mindmap Công khai' : 'Mindmap của bạn'}
+              </h2>
               <Badge className="bg-pink-500/20 text-pink-300 border-pink-400/30">
-                {filteredUserMindmaps.length} mindmap
+                {selectedCategory === 'public' 
+                  ? `${publicPagination.totalElements} mindmap công khai`
+                  : `${filteredUserMindmaps.length} mindmap`
+                }
               </Badge>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredUserMindmaps.map((mindmap, index) => (
+              {currentMindmaps.map((mindmap, index) => (
                 <Card key={`mindmap-${mindmap.id}-${index}`} className="bg-black/40 backdrop-blur-xl border border-pink-500/30 rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-pink-500/20 transition-all duration-300 hover:scale-105 overflow-hidden group">
                   <div className={`h-2 bg-gradient-to-r ${mindmap.color || 'from-pink-500 to-violet-500'}`}></div>
                   <CardHeader className="pb-3">
@@ -280,41 +321,55 @@ export default function MindMapPage() {
                         <Eye className="size-4 mr-1" />
                         Xem
                       </Button>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleEditMindmap(mindmap)}
-                        className="flex-1 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-lg"
-                      >
-                        <Edit className="size-4 mr-1" />
-                        Sửa
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleDeleteMindmap(mindmap.id)}
-                        disabled={isDeleting}
-                        className="bg-black/30 border-red-400/30 text-red-300 hover:bg-red-500/20 rounded-lg"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      
+                      {/* Chỉ hiện nút Sửa/Xóa cho mindmap của user */}
+                      {selectedCategory !== 'public' && (
+                        <>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleEditMindmap(mindmap)}
+                            className="flex-1 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-lg"
+                          >
+                            <Edit className="size-4 mr-1" />
+                            Sửa
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDeleteMindmap(mindmap.id)}
+                            disabled={isDeleting}
+                            className="bg-black/30 border-red-400/30 text-red-300 hover:bg-red-500/20 rounded-lg"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                     
-                    {/* Visibility Toggle & Badge */}
+                    {/* Visibility Toggle & Badge - chỉ cho mindmap của user */}
                     <div className="flex items-center justify-between">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleToggleVisibility(mindmap)}
-                        className={`flex items-center gap-2 text-xs ${
-                          mindmap.visibility === 'PUBLIC'
-                            ? 'bg-green-500/20 border-green-400/30 text-green-300 hover:bg-green-500/30'
-                            : 'bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-500/30'
-                        }`}
-                        title={mindmap.visibility === 'PUBLIC' ? 'Chuyển sang Riêng tư' : 'Chuyển sang Công khai'}
-                      >
-                        {getVisibilityIcon(mindmap.visibility)}
-                        <span>{getVisibilityLabel(mindmap.visibility)}</span>
-                      </Button>
+                      {selectedCategory !== 'public' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleToggleVisibility(mindmap)}
+                          className={`flex items-center gap-2 text-xs ${
+                            mindmap.visibility === 'PUBLIC'
+                              ? 'bg-green-500/20 border-green-400/30 text-green-300 hover:bg-green-500/30'
+                              : 'bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-500/30'
+                          }`}
+                          title={mindmap.visibility === 'PUBLIC' ? 'Chuyển sang Riêng tư' : 'Chuyển sang Công khai'}
+                        >
+                          {getVisibilityIcon(mindmap.visibility)}
+                          <span>{getVisibilityLabel(mindmap.visibility)}</span>
+                        </Button>
+                      )}
+                      {selectedCategory === 'public' && (
+                        <div className="flex items-center gap-2 text-xs text-green-300">
+                          <Globe className="size-3" />
+                          <span>Công khai</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 text-xs text-pink-200/70">
                         <Calendar className="size-3" />
                         {mindmap.lastModified || 'Unknown'}
@@ -325,21 +380,57 @@ export default function MindMapPage() {
               ))}
             </div>
             
-            {filteredUserMindmaps.length === 0 && (
-              <div className="text-center py-12">
+            {currentMindmaps.length === 0 && (
+              <div className="text-center py-12 col-span-full">
                 <Brain className="size-16 text-pink-400/50 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">Chưa có mindmap nào</h3>
-                <p className="text-pink-200/60 mb-6">Tạo mindmap đầu tiên của bạn ngay bây giờ!</p>
-                <Button 
-                  onClick={() => setShowCreateForm(true)}
-                  className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-xl"
-                >
-                  <Plus className="size-4 mr-2" />
-                  Tạo mindmap mới
-                </Button>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {selectedCategory === 'public' ? 'Chưa có mindmap công khai nào' : 'Chưa có mindmap nào'}
+                </h3>
+                <p className="text-pink-200/60 mb-6">
+                  {selectedCategory === 'public' 
+                    ? 'Các mindmap công khai từ người dùng khác sẽ xuất hiện ở đây'
+                    : 'Tạo mindmap đầu tiên của bạn ngay bây giờ!'
+                  }
+                </p>
+                {selectedCategory !== 'public' && (
+                  <Button 
+                    onClick={() => setShowCreateForm(true)}
+                    className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 text-white rounded-xl"
+                  >
+                    <Plus className="size-4 mr-2" />
+                    Tạo mindmap mới
+                  </Button>
+                )}
               </div>
             )}
           </div>
+
+          {/* Pagination cho Public Mindmaps */}
+          {selectedCategory === 'public' && publicPagination.totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-8">
+              <Button
+                variant="outline"
+                onClick={() => loadPublicMindmaps(Math.max(0, publicPagination.page - 1))}
+                disabled={publicPagination.page === 0}
+                className="bg-black/30 border-purple-400/30 text-purple-200 hover:bg-purple-500/20"
+              >
+                ← Trước
+              </Button>
+              <div className="flex items-center gap-2 px-4">
+                <span className="text-white">
+                  Trang {publicPagination.page + 1} / {publicPagination.totalPages}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => loadPublicMindmaps(Math.min(publicPagination.totalPages - 1, publicPagination.page + 1))}
+                disabled={publicPagination.page >= publicPagination.totalPages - 1}
+                className="bg-black/30 border-purple-400/30 text-purple-200 hover:bg-purple-500/20"
+              >
+                Sau →
+              </Button>
+            </div>
+          )}
       </div>
 
       {/* Create Form Modal */}
@@ -365,18 +456,20 @@ export default function MindMapPage() {
                 setUserMindmaps(prev => prev.map(m => m.id === updated.id ? updated : m));
               }}
               onDelete={handleDeleteMindmap}
+              readOnly={false}
             />
           </div>
         </div>
       )}
 
-      {/* Mindmap Viewer Modal */}
+      {/* Mindmap Viewer Modal - readOnly cho mindmap công khai hoặc không phải của user */}
       {viewingMindmap && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
           <div className="w-full h-full">
             <MindmapEditor
               mindmap={viewingMindmap}
               onClose={handleCloseViewer}
+              readOnly={selectedCategory === 'public' || viewingMindmap.userId?.toString() !== currentUserId}
             />
           </div>
         </div>

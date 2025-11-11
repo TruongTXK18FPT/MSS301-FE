@@ -28,6 +28,19 @@ class MindmapService {
   }
 
   /**
+   * Lấy tất cả mindmaps công khai từ tất cả users
+   */
+  async getPublicMindmaps(page: number = 0, size: number = 20): Promise<{ content: MindmapResponse[], totalElements: number, totalPages: number }> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<any>>(`/public?page=${page}&size=${size}`);
+      return response.data.result || { content: [], totalElements: 0, totalPages: 0 };
+    } catch (error: any) {
+      console.error('Error fetching public mindmaps:', error);
+      return { content: [], totalElements: 0, totalPages: 0 };
+    }
+  }
+
+  /**
    * Tạo mindmap mới
    */
   async createMindmap(data: {
@@ -85,7 +98,7 @@ class MindmapService {
   }
 
   /**
-   * Lấy mindmap theo ID
+   * Lấy mindmap theo ID (chỉ mindmap của user)
    */
   async getMindmapById(id: number): Promise<MindmapResponse> {
     try {
@@ -97,7 +110,19 @@ class MindmapService {
   }
 
   /**
-   * Lấy tất cả nodes của một mindmap
+   * Xem mindmap (PUBLIC hoặc của user)
+   */
+  async viewMindmap(id: number): Promise<MindmapResponse> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<MindmapResponse>>(`/view/${id}`);
+      return response.data.result!;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể xem mindmap này');
+    }
+  }
+
+  /**
+   * Lấy tất cả nodes của một mindmap (chỉ mindmap của user)
    */
   async getMindmapNodes(id: number): Promise<any[]> {
     try {
@@ -106,6 +131,19 @@ class MindmapService {
     } catch (error: any) {
       console.error('Error fetching mindmap nodes:', error);
       throw new Error(error.response?.data?.message || 'Lấy nodes thất bại');
+    }
+  }
+
+  /**
+   * Xem nodes của mindmap (PUBLIC hoặc của user)
+   */
+  async viewMindmapNodes(id: number): Promise<any[]> {
+    try {
+      const response = await mindmapApi.get<ApiResponse<any[]>>(`/view/${id}/nodes`);
+      return response.data.result || [];
+    } catch (error: any) {
+      console.error('Error viewing mindmap nodes:', error);
+      throw new Error(error.response?.data?.message || 'Không thể xem nodes');
     }
   }
 

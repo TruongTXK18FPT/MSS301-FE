@@ -26,7 +26,6 @@ interface ClassroomResponse {
   subject?: string; // Optional - may not be in response
   grade?: string; // Optional - may not be in response
   isPublic: boolean;
-  status?: "ACTIVE" | "INACTIVE"; // Optional - may not be in response
   maxStudents: number;
   currentStudents: number;
   joinCode: string;
@@ -319,8 +318,9 @@ class AdminService {
         classroomData
       );
       return response.data.result;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error updating classroom ${classroomId}:`, error);
+      console.error('Error response data:', error?.response?.data);
       throw error;
     }
   }

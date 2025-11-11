@@ -31,8 +31,11 @@ export default function ClassroomDetailPage() {
   const classroomId = Number(params.id);
 
   const [classroom, setClassroom] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  
+  const isTeacher = auth?.role === 'TEACHER';
+  const [activeTab, setActiveTab] = useState(isTeacher ? 'overview' : 'my-work');
 
   useEffect(() => {
     loadClassroom();
@@ -41,8 +44,12 @@ export default function ClassroomDetailPage() {
   const loadClassroom = async () => {
     try {
       setLoading(true);
-      const data = await classroomService.getClassroomById(classroomId);
-      setClassroom(data);
+      const [classroomData, summaryData] = await Promise.all([
+        classroomService.getClassroomById(classroomId),
+        classroomService.getClassroomSummary(classroomId)
+      ]);
+      setClassroom(classroomData);
+      setSummary(summaryData);
     } catch (error) {
       console.error('Error loading classroom:', error);
     } finally {
@@ -69,8 +76,6 @@ export default function ClassroomDetailPage() {
       </div>
     );
   }
-
-  const isTeacher = auth?.role === 'TEACHER';
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -124,7 +129,7 @@ export default function ClassroomDetailPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{classroom.currentStudents || 0}</div>
+            <div className="text-2xl font-bold">{summary?.stats?.totalStudents || 0}</div>
             <p className="text-xs text-muted-foreground">
               Tối đa {classroom.maxStudents || 50} học sinh
             </p>
@@ -137,9 +142,9 @@ export default function ClassroomDetailPage() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{classroom.contentCount || 0}</div>
+            <div className="text-2xl font-bold">{summary?.stats?.totalMindmaps || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Tài liệu học tập
+              {summary?.stats?.totalLessons || 0} bài giảng
             </p>
           </CardContent>
         </Card>
@@ -150,9 +155,9 @@ export default function ClassroomDetailPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{classroom.assignmentCount || 0}</div>
+            <div className="text-2xl font-bold">{summary?.stats?.totalAssignments || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Đang hoạt động
+              {summary?.stats?.pendingSubmissions || 0} chưa nộp
             </p>
           </CardContent>
         </Card>
@@ -163,9 +168,9 @@ export default function ClassroomDetailPage() {
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{classroom.quizCount || 0}</div>
+            <div className="text-2xl font-bold">{summary?.stats?.totalQuizzes || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Kiểm tra trắc nghiệm
+              Điểm TB: {summary?.stats?.averageScore?.toFixed(1) || 'N/A'}
             </p>
           </CardContent>
         </Card>
@@ -173,44 +178,130 @@ export default function ClassroomDetailPage() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-          <TabsTrigger value="students">Học sinh</TabsTrigger>
-          <TabsTrigger value="mindmaps">Mindmaps</TabsTrigger>
-          <TabsTrigger value="lessons">Bài giảng</TabsTrigger>
-          <TabsTrigger value="assignments">Bài tập</TabsTrigger>
-          <TabsTrigger value="quizzes">Quiz</TabsTrigger>
-          {isTeacher && <TabsTrigger value="grading">Chấm điểm</TabsTrigger>}
-        </TabsList>
+        {isTeacher ? (
+          <>
+            {/* TEACHER VIEW */}
+            <TabsList className="grid w-full grid-cols-7">
+              <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+              <TabsTrigger value="students">Học sinh</TabsTrigger>
+              <TabsTrigger value="mindmaps">Mindmaps</TabsTrigger>
+              <TabsTrigger value="lessons">Bài giảng</TabsTrigger>
+              <TabsTrigger value="assignments">Bài tập</TabsTrigger>
+              <TabsTrigger value="quizzes">Quiz</TabsTrigger>
+              <TabsTrigger value="grading">Chấm điểm</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <ClassroomOverview classroom={classroom} />
-        </TabsContent>
+            <TabsContent value="overview" className="space-y-4">
+              <ClassroomOverview classroom={classroom} />
+            </TabsContent>
 
-        <TabsContent value="students" className="space-y-4">
-          <StudentManagement classroomId={classroomId} isTeacher={isTeacher} />
-        </TabsContent>
+            <TabsContent value="students" className="space-y-4">
+              <StudentManagement classroomId={classroomId} isTeacher={isTeacher} />
+            </TabsContent>
 
-        <TabsContent value="mindmaps" className="space-y-4">
-          <MindmapManagement classroomId={classroomId} isTeacher={isTeacher} />
-        </TabsContent>
+            <TabsContent value="mindmaps" className="space-y-4">
+              <MindmapManagement classroomId={classroomId} isTeacher={isTeacher} />
+            </TabsContent>
 
-        <TabsContent value="lessons" className="space-y-4">
-          <LessonManagement classroomId={classroomId} isTeacher={isTeacher} />
-        </TabsContent>
+            <TabsContent value="lessons" className="space-y-4">
+              <LessonManagement classroomId={classroomId} isTeacher={isTeacher} />
+            </TabsContent>
 
-        <TabsContent value="assignments" className="space-y-4">
-          <AssignmentManagement classroomId={classroomId} isTeacher={isTeacher} />
-        </TabsContent>
+            <TabsContent value="assignments" className="space-y-4">
+              <AssignmentManagement classroomId={classroomId} isTeacher={isTeacher} />
+            </TabsContent>
 
-        <TabsContent value="quizzes" className="space-y-4">
-          <QuizManagement classroomId={classroomId} isTeacher={isTeacher} />
-        </TabsContent>
+            <TabsContent value="quizzes" className="space-y-4">
+              <QuizManagement classroomId={classroomId} isTeacher={isTeacher} />
+            </TabsContent>
 
-        {isTeacher && (
-          <TabsContent value="grading" className="space-y-4">
-            <GradingPanel classroomId={classroomId} />
-          </TabsContent>
+            <TabsContent value="grading" className="space-y-4">
+              <GradingPanel classroomId={classroomId} />
+            </TabsContent>
+          </>
+        ) : (
+          <>
+            {/* STUDENT VIEW */}
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="my-work">Bài tập của tôi</TabsTrigger>
+              <TabsTrigger value="my-quizzes">Quiz của tôi</TabsTrigger>
+              <TabsTrigger value="resources">Tài liệu</TabsTrigger>
+              <TabsTrigger value="my-grades">Điểm số</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="my-work" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Bài tập của tôi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AssignmentManagement classroomId={classroomId} isTeacher={false} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="my-quizzes" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5" />
+                    Quiz của tôi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <QuizManagement classroomId={classroomId} isTeacher={false} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="resources" className="space-y-4">
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      Mindmaps
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <MindmapManagement classroomId={classroomId} isTeacher={false} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Bài giảng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <LessonManagement classroomId={classroomId} isTeacher={false} />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="my-grades" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="w-5 h-5" />
+                    Bảng điểm của tôi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* TODO: Create StudentGradesView component */}
+                  <p className="text-sm text-muted-foreground">
+                    Chức năng xem điểm đang được phát triển...
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </>
         )}
       </Tabs>
     </div>
