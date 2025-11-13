@@ -9,9 +9,26 @@ import {
   ArrowLeft, ArrowRight, Clock, Lightbulb, CheckCircle,
   XCircle, Brain, Sparkles, Send, Trophy
 } from 'lucide-react';
-import { ContentItem, contentService, QuizQuestion, QuizOption } from '@/lib/services/content.service';
+import { ContentItem, contentService } from '@/lib/services/content.service';
 import { generateHint } from '@/ai/flows/ai-powered-hints-practice';
 import LatexPreview from '@/components/classroom/LatexPreview';
+import MarkdownMessage from '@/components/chat/MarkdownMessage';
+
+// Frontend UI interfaces
+interface QuizQuestionUI {
+  id?: number;
+  questionText: string;
+  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
+  points: number;
+  explanation?: string;
+  options?: QuizOptionUI[];
+}
+
+interface QuizOptionUI {
+  id?: number;
+  optionText: string;
+  isCorrect: boolean;
+}
 
 interface QuizPlayerProps {
   quiz: ContentItem;
@@ -25,7 +42,7 @@ interface Answer {
 }
 
 export default function QuizPlayer({ quiz, onClose }: QuizPlayerProps) {
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [questions, setQuestions] = useState<QuizQuestionUI[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [attemptId, setAttemptId] = useState<number | null>(null);
@@ -60,14 +77,29 @@ export default function QuizPlayer({ quiz, onClose }: QuizPlayerProps) {
     try {
       setLoading(true);
       const quizData = await contentService.getQuiz(quiz.id);
-      setQuestions(quizData.questions || []);
+      
+      // Map backend format to UI format
+      const mappedQuestions: QuizQuestionUI[] = (quizData.questions || []).map((q: any) => ({
+        id: q.id,
+        questionText: q.text || q.questionText || '',
+        questionType: q.type || q.questionType || 'MULTIPLE_CHOICE',
+        points: q.points || 10,
+        explanation: q.explanation || '',
+        options: (q.options || []).map((opt: any) => ({
+          id: opt.id,
+          optionText: opt.text || opt.optionText || '',
+          isCorrect: opt.correct ?? opt.isCorrect ?? false
+        }))
+      }));
+      
+      setQuestions(mappedQuestions);
       
       // Start quiz attempt
       const attempt = await contentService.startQuizAttempt(quiz.id);
       setAttemptId(attempt.id);
 
       // Initialize answers
-      const initialAnswers = (quizData.questions || []).map((q) => ({
+      const initialAnswers = mappedQuestions.map((q) => ({
         questionId: q.id || 0,
         selectedOptionId: undefined,
         textAnswer: undefined
@@ -124,13 +156,14 @@ export default function QuizPlayer({ quiz, onClose }: QuizPlayerProps) {
     if (!attemptId) return;
 
     try {
-      const result = await contentService.submitQuizAttempt(attemptId, {
-        answers: answers.map(ans => ({
-          questionId: ans.questionId,
-          selectedOptionId: ans.selectedOptionId,
-          textAnswer: ans.textAnswer
-        }))
-      });
+      // Prepare answers array
+      const answersArray = answers.map(ans => ({
+        questionId: ans.questionId,
+        selectedOptionId: ans.selectedOptionId,
+        textAnswer: ans.textAnswer
+      }));
+      
+      const result = await contentService.submitQuizAttempt(attemptId, answersArray);
       
       setScore(result.score || 0);
       setSubmitted(true);
@@ -397,7 +430,9 @@ export default function QuizPlayer({ quiz, onClose }: QuizPlayerProps) {
                       <Sparkles className="h-4 w-4" />
                       Gợi ý từ AI:
                     </strong>
-                    {hint}
+                    <div className="text-amber-200">
+                      <MarkdownMessage content={hint} className="text-amber-200" />
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}

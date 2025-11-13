@@ -11,11 +11,29 @@ import {
   X, Plus, Trash2, Clock, 
   CheckCircle, AlertCircle, Loader2, Sparkles
 } from 'lucide-react';
-import { contentService, ContentItem, QuizQuestion } from '@/lib/services/content.service';
+import { contentService, ContentItem } from '@/lib/services/content.service';
 import MathTextInput from '@/components/classroom/MathTextInput';
 import LatexPreview from '@/components/classroom/LatexPreview';
 import AiQuizGeneratorModal from '@/components/classroom/AiQuizGeneratorModal';
 import { aiQuizService } from '@/services/ai-quiz.service';
+
+// Frontend UI interfaces (different from backend QuizQuestion/QuizOption)
+interface QuizQuestionUI {
+  id?: number;
+  questionText: string;
+  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
+  points: number;
+  explanation?: string;
+  orderIndex: number;
+  options?: QuizOptionUI[];
+}
+
+interface QuizOptionUI {
+  id?: number;
+  optionText: string;
+  isCorrect: boolean;
+  orderIndex: number;
+}
 
 interface QuizFormProps {
   quiz?: ContentItem | null;
@@ -35,7 +53,7 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
     shuffleQuestions: false,
   });
 
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [questions, setQuestions] = useState<QuizQuestionUI[]>([]);
   const [currentTag, setCurrentTag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -61,8 +79,23 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
   const loadQuestions = async (quizId: number) => {
     try {
       const quizData = await contentService.getQuiz(quizId);
-      if (quizData.questions) {
-        setQuestions(quizData.questions);
+      if (quizData.questions && Array.isArray(quizData.questions)) {
+        // Backend returns: {id, text, type, points, explanation, options[{id, text, correct}]}
+        const mappedQuestions: QuizQuestionUI[] = quizData.questions.map((q: any, idx: number) => ({
+          id: q.id,
+          questionText: q.text || q.questionText || '',
+          questionType: q.type || q.questionType || 'MULTIPLE_CHOICE',
+          points: q.points || 10,
+          explanation: q.explanation || '',
+          orderIndex: idx,
+          options: (q.options || []).map((opt: any, optIdx: number) => ({
+            id: opt.id,
+            optionText: opt.text || opt.optionText || '',
+            isCorrect: opt.correct ?? opt.isCorrect ?? false,
+            orderIndex: optIdx
+          }))
+        }));
+        setQuestions(mappedQuestions);
       }
     } catch (error) {
       console.error('Error loading questions:', error);
@@ -70,7 +103,7 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
   };
 
   const handleAddQuestion = () => {
-    const newQuestion: QuizQuestion = {
+    const newQuestion: QuizQuestionUI = {
       questionText: '',
       questionType: 'MULTIPLE_CHOICE',
       points: 10,
@@ -125,21 +158,22 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
         numQuestions
       });
 
-      // Convert to QuizQuestion format and add to current questions
-      const newQuestions: QuizQuestion[] = generatedQuestions.map((q: any, idx: number) => ({
-        questionText: q.text || q.questionText,  // Backend returns 'text'
-        questionType: q.type || 'MULTIPLE_CHOICE' as const,
+      // Convert to QuizQuestionUI format and add to current questions
+      const newQuestions: QuizQuestionUI[] = generatedQuestions.map((q: any, idx: number) => ({
+        questionText: q.text || q.questionText || '',  // Backend returns 'text'
+        questionType: q.type || q.questionType || 'MULTIPLE_CHOICE' as const,
         points: q.points || 10,
+        explanation: q.explanation || '',  // Include explanation from AI
         orderIndex: questions.length + idx,
-        options: q.options?.map((opt: any, optIdx: number) => ({
-          optionText: opt.text || opt.optionText,  // Backend returns 'text'
-          isCorrect: opt.correct || opt.isCorrect || false,  // Backend returns 'correct', not 'isCorrect'
+        options: (q.options || []).map((opt: any, optIdx: number) => ({
+          optionText: opt.text || opt.optionText || '',  // Backend returns 'text'
+          isCorrect: opt.correct ?? opt.isCorrect ?? false,  // Backend returns 'correct'
           orderIndex: optIdx
-        })) || []
+        }))
       }));
 
       setQuestions([...questions, ...newQuestions]);
-      alert(`✨ Đã tạo ${generatedQuestions.length} câu hỏi bằng AI! Nhấn "Tạo Quiz" bên dưới để lưu.`);
+      alert(`✨ Đã tạo ${generatedQuestions.length} câu hỏi bằng AI! Nhấn "Lưu Quiz" bên dưới để lưu.`);
       
       // Don't reload immediately - let user save manually
       // This avoids 500 error from reloading before DB commit
@@ -204,15 +238,13 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
 
     // Validate all questions have text and at least one correct answer
     for (let i = 0; i < questions.length; i++) {
-      // @ts-ignore - Backend uses 'text', frontend uses 'questionText'
-      const questionText = questions[i].questionText || questions[i].text || '';
+      const questionText = questions[i].questionText || '';
       if (!questionText.trim()) {
         alert(`Câu hỏi ${i + 1} chưa có nội dung`);
         return;
       }
 
-      // @ts-ignore - Backend uses 'type', frontend uses 'questionType'
-      if (questions[i].questionType === 'MULTIPLE_CHOICE' || questions[i].type === 'MULTIPLE_CHOICE') {
+      if (questions[i].questionType === 'MULTIPLE_CHOICE') {
         const hasCorrect = questions[i].options?.some(opt => opt.isCorrect);
         if (!hasCorrect) {
           alert(`Câu hỏi ${i + 1} chưa có đáp án đúng`);
@@ -220,8 +252,7 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
         }
 
         const hasEmptyOption = questions[i].options?.some(opt => {
-          // @ts-ignore - Backend uses 'text', frontend uses 'optionText'
-          const text = opt.optionText || opt.text || '';
+          const text = opt.optionText || '';
           return !text.trim();
         });
         if (hasEmptyOption) {
@@ -233,20 +264,22 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
 
     setIsSubmitting(true);
     try {
-      // Map questions to backend format (text/type/correct instead of questionText/questionType/isCorrect)
-      const mappedQuestions = questions.map((q: any, idx) => ({
-        text: q.questionText || q.text,
-        type: q.questionType || q.type,
+      // Map questions to backend format (text/type/correct/explanation instead of questionText/questionType/isCorrect)
+      const mappedQuestions = questions.map((q: any) => ({
+        text: q.questionText || q.text || '',
+        type: q.questionType || q.type || 'MULTIPLE_CHOICE',
         points: q.points || 10,
-        options: q.options?.map((opt: any, optIdx: number) => ({
-          text: opt.optionText || opt.text,
-          correct: opt.isCorrect || opt.correct || false,  // Backend uses 'correct'
+        explanation: q.explanation || '',  // Include explanation
+        options: (q.options || []).map((opt: any) => ({
+          text: opt.optionText || opt.text || '',
+          correct: opt.isCorrect ?? opt.correct ?? false,  // Backend uses 'correct'
         }))
       }));
 
       if (quiz) {
         // Update existing quiz
         await contentService.updateContentItem(quiz.id, {
+          type: 'QUIZ',
           title: formData.title,
           description: formData.description,
           subject: formData.subject,
@@ -258,21 +291,24 @@ export default function QuizForm({ quiz, onSuccess, onCancel }: QuizFormProps) {
         await contentService.createOrUpdateQuiz(quiz.id, {
           timeLimitSec: formData.timeLimitSec,
           shuffleQuestions: formData.shuffleQuestions,
-          // @ts-ignore - Backend format uses 'text'/'type', not 'questionText'/'questionType'
           questions: mappedQuestions,
         });
       } else {
-        // Create new quiz
-        await contentService.createQuiz({
+        // Create new quiz using createOrUpdateQuiz to avoid duplicate
+        const newQuiz = await contentService.createContentItem({
           title: formData.title,
           description: formData.description,
+          type: 'QUIZ',
           subject: formData.subject,
           grade: formData.grade,
           tags: formData.tags,
           isPublic: formData.isPublic,
+        });
+
+        // Then add quiz questions
+        await contentService.createOrUpdateQuiz(newQuiz.id, {
           timeLimitSec: formData.timeLimitSec,
           shuffleQuestions: formData.shuffleQuestions,
-          // @ts-ignore - Backend format uses 'text'/'type', not 'questionText'/'questionType'
           questions: mappedQuestions,
         });
       }

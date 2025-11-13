@@ -17,7 +17,7 @@ export interface ContentItem {
 }
 
 export interface Quiz {
-  contentItemId: number;
+  contentItemId?: number;
   timeLimitSec: number;
   shuffleQuestions: boolean;
   questions?: QuizQuestion[];
@@ -25,19 +25,17 @@ export interface Quiz {
 
 export interface QuizQuestion {
   id?: number;
-  questionText: string;
-  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  text: string;
+  type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
   points: number;
-  orderIndex: number;
+  explanation?: string;
   options?: QuizOption[];
-  correctAnswer?: string;
 }
 
 export interface QuizOption {
   id?: number;
-  optionText: string;
-  isCorrect: boolean;
-  orderIndex: number;
+  text: string;
+  correct: boolean;
 }
 
 export interface Assignment {
@@ -150,7 +148,14 @@ class ContentService {
   }
 
   async updateContentItem(id: number, data: Partial<ContentItem>): Promise<ContentItem> {
-    const response = await contentApi.put(`${this.baseUrl}/${id}`, data);
+    // Transform tags array to comma-separated string for backend
+    const { tags, ...rest } = data;
+    const bodyData = {
+      ...rest,
+      tags: tags ? (Array.isArray(tags) ? tags.join(',') : tags) : undefined,
+    };
+    
+    const response = await contentApi.put(`${this.baseUrl}/${id}`, bodyData);
     return response.data.result || response.data;
   }
 
@@ -321,7 +326,11 @@ class ContentService {
   }
 
   async submitQuizAttempt(attemptId: number, answers: any): Promise<QuizAttempt> {
-    const response = await contentApi.put(`/quiz-attempts/${attemptId}/submit`, { answers });
+    // Convert answers object/array to JSON string as backend expects
+    const answersJson = typeof answers === 'string' ? answers : JSON.stringify(answers);
+    const response = await contentApi.put(`/quiz-attempts/${attemptId}/submit`, { 
+      answers: answersJson 
+    });
     return response.data.result || response.data;
   }
 

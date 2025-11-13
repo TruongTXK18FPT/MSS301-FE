@@ -10,6 +10,7 @@ export interface GeneratedQuizQuestion {
   text: string;
   type: string;
   points: number;
+  explanation?: string;
   options: Array<{
     text: string;
     correct: boolean;

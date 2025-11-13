@@ -1,37 +1,31 @@
 import { contentApi } from '../lib/services/axios';
 
 export interface QuizQuestionRequest {
-  questionText: string;
-  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
+  text: string;
+  type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
   points: number;
   explanation?: string;
   options: QuizOptionRequest[];
-  orderIndex?: number;
 }
 
 export interface QuizOptionRequest {
-  optionText: string;
-  isCorrect: boolean;
-  orderIndex?: number;
+  text: string;
+  correct: boolean;
 }
 
 export interface QuizQuestionResponse {
   id: number;
-  quizId: number;
-  questionText: string;
-  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
+  text: string;
+  type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
   points: number;
   explanation?: string;
-  orderIndex?: number;
   options: QuizOptionResponse[];
 }
 
 export interface QuizOptionResponse {
   id: number;
-  questionId: number;
-  optionText: string;
-  isCorrect: boolean;
-  orderIndex?: number;
+  text: string;
+  correct: boolean;
 }
 
 export const quizService = {

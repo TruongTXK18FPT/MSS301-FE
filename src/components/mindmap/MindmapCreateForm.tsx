@@ -13,6 +13,7 @@ import { mindmapService } from '@/lib/services/mindmapService';
 interface MindmapCreateFormProps {
   onSuccess?: (mindmap: any) => void;
   onCancel?: () => void;
+  classroomId?: number; // Optional classroom ID for context
 }
 
 const GRADES = [
@@ -30,13 +31,13 @@ const GRADES = [
   { value: "12", label: "Lớp 12" },
 ];
 
-export default function MindmapCreateForm({ onSuccess, onCancel }: Readonly<MindmapCreateFormProps>) {
+export default function MindmapCreateForm({ onSuccess, onCancel, classroomId }: Readonly<MindmapCreateFormProps>) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     grade: '',
     subject: 'Toán học',
-    visibility: 'PRIVATE' as 'PRIVATE' | 'PUBLIC' | 'CLASSROOM',
+    visibility: (classroomId ? 'CLASSROOM' : 'PRIVATE') as 'PRIVATE' | 'PUBLIC' | 'CLASSROOM',
     useDocuments: false,
     documentId: '',
     chapterId: '',

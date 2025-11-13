@@ -215,18 +215,21 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
       if (editingQuiz) {
         await contentService.updateContentItem(editingQuiz.id, contentData);
         quizId = editingQuiz.id;
+        
+        // Update quiz settings
+        await contentService.createOrUpdateQuiz(quizId, {
+          timeLimitSec: quizForm.timeLimitSec,
+          shuffleQuestions: quizForm.shuffleQuestions,
+          questions: [], // Keep existing questions
+        });
         alert('Cập nhật quiz thành công!');
       } else {
         const created = await contentService.createContentItem(contentData);
         quizId = created.id;
         
-        // Create empty quiz record
-        await contentService.createOrUpdateQuiz(quizId, {
-          timeLimitSec: quizForm.timeLimitSec,
-          shuffleQuestions: quizForm.shuffleQuestions,
-          questions: [],
-        });
-        alert('Tạo quiz thành công!');
+        // Don't create empty quiz record here - it will be created when adding first question
+        // This avoids duplicate quiz records
+        alert('Tạo quiz thành công! Hãy thêm câu hỏi.');
       }
       
       await loadQuizzes();
@@ -274,33 +277,25 @@ export default function QuizManagement({ classroomId, isTeacher }: QuizManagemen
 
       const created = await contentService.createContentItem(contentData);
 
-      // 2. Tạo quiz structure
-      await contentService.createOrUpdateQuiz(created.id, {
-        timeLimitSec: 1800,
-        shuffleQuestions: true,
-        questions: [],
-      });
-
-      // 3. Generate questions với AI
+      // 2. Generate questions với AI
       const generatedQuestions = await aiQuizService.generateQuizQuestions(created.id, {
         topic,
         grade,
         numQuestions,
       });
 
-      // 4. Save questions
+      // 3. Save questions (backend expects: text, type, points, explanation, options[{text, correct}])
       await contentService.createOrUpdateQuiz(created.id, {
         timeLimitSec: 1800,
         shuffleQuestions: true,
-        questions: generatedQuestions.map((gq: any, idx: number) => ({
-          questionText: gq.text,
-          questionType: gq.type,
+        questions: generatedQuestions.map((gq: any) => ({
+          text: gq.text,
+          type: gq.type,
           points: gq.points || 10,
-          orderIndex: idx,
-          options: gq.options.map((opt: any, oIdx: number) => ({
-            optionText: opt.text,
-            isCorrect: opt.correct,
-            orderIndex: oIdx,
+          explanation: gq.explanation || '',
+          options: gq.options.map((opt: any) => ({
+            text: opt.text,
+            correct: opt.correct,
           })),
         })),
       });

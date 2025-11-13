@@ -28,6 +28,7 @@ const CLASSROOM_SERVICE_PATH = '/classrooms';
 const DOCUMENT_SERVICE_PATH = '/document';
 const RETRIEVAL_SERVICE_PATH = '/retrieval';
 const RAG_SERVICE_PATH = '/rag';
+const CHATBOT_SERVICE_PATH = '/chatbot';
 // Tạo axios instance chung cho Gateway
 const apiClient = axios.create({
   baseURL: GATEWAY_URL,
@@ -139,6 +140,14 @@ export const ragApi = axios.create({
   },
 });
 
+export const chatbotApi = axios.create({
+  baseURL: `${GATEWAY_URL}${API_PREFIX}${CHATBOT_SERVICE_PATH}`,
+  timeout: 60000, // Chat có thể mất thời gian hơn
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 export const gatewayApi = axios.create({
   baseURL: GATEWAY_URL,
   timeout: 30000,
@@ -148,7 +157,7 @@ export const gatewayApi = axios.create({
 });
 
 // Thêm interceptors cho tất cả các instance
-[authApi, profileApi, mindmapApi, classroomApi, contentApi, documentApi, retrievalApi, ragApi, gatewayApi].forEach(api => {
+[authApi, profileApi, mindmapApi, classroomApi, contentApi, documentApi, retrievalApi, ragApi, chatbotApi, gatewayApi].forEach(api => {
   // Request interceptor
   api.interceptors.request.use(
     (config) => {

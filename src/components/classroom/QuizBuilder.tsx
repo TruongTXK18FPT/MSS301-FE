@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { quizService, QuizQuestionRequest } from '@/services/quiz.service';
 import { aiQuizService } from '@/services/ai-quiz.service';
+import { contentService } from '@/lib/services/content.service';
 import MathTextInput from './MathTextInput';
 import LatexPreview from './LatexPreview';
 import AiQuizGeneratorModal from './AiQuizGeneratorModal';
@@ -64,27 +65,27 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
   const loadQuestions = async () => {
     setLoading(true);
     try {
-      const data = await quizService.getQuestions(quizId);
+      // Use contentService to get quiz data (backend returns: {timeLimitSec, shuffleQuestions, questions[]})
+      const quizData = await contentService.getQuizByContentId(quizId);
       
       // Handle empty response or null
-      if (!data || !Array.isArray(data)) {
+      if (!quizData || !quizData.questions || !Array.isArray(quizData.questions)) {
         setQuestions([]);
         return;
       }
       
-      setQuestions(data.map(q => ({
+      // Backend returns: {id, text, type, points, explanation, options[{id, text, correct}]}
+      setQuestions(quizData.questions.map((q: any) => ({
         id: q.id,
-        questionText: q.questionText,
-        questionType: q.questionType,
+        questionText: q.text,
+        questionType: q.type,
         points: q.points,
         explanation: q.explanation,
-        options: (q.options || []).map(o => ({
+        options: (q.options || []).map((o: any) => ({
           id: o.id,
-          optionText: o.optionText,
-          isCorrect: o.isCorrect,
-          orderIndex: o.orderIndex,
+          optionText: o.text,
+          isCorrect: o.correct,
         })),
-        orderIndex: q.orderIndex,
       })));
     } catch (error) {
       console.error('Error loading questions:', error);
@@ -172,34 +173,24 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Prepare requests
-      const requests: QuizQuestionRequest[] = questions.map((q, index) => ({
-        questionText: q.questionText,
-        questionType: q.questionType,
+      // Prepare requests (backend expects: text, type, points, explanation, options[{text, correct}])
+      const requests: QuizQuestionRequest[] = questions.map((q) => ({
+        text: q.questionText,
+        type: q.questionType,
         points: q.points,
-        explanation: q.explanation,
-        options: q.options.map((o, oIndex) => ({
-          optionText: o.optionText,
-          isCorrect: o.isCorrect,
-          orderIndex: oIndex,
+        explanation: q.explanation || '',
+        options: q.options.map((o) => ({
+          text: o.optionText,
+          correct: o.isCorrect,
         })),
-        orderIndex: index,
       }));
 
-      // Use batch add if questions don't have IDs (new questions)
-      const newQuestions = requests.filter((_, index) => !questions[index].id);
-      if (newQuestions.length > 0) {
-        await quizService.addQuestions(quizId, newQuestions);
-      }
-
-      // Update existing questions
-      const updatePromises = questions
-        .filter(q => q.id)
-        .map((q, index) => 
-          quizService.updateQuestion(quizId, q.id!, requests[index])
-        );
-      
-      await Promise.all(updatePromises);
+      // Use contentService.createOrUpdateQuiz to save all questions at once
+      await contentService.createOrUpdateQuiz(quizId, {
+        timeLimitSec: 3600, // Keep existing or default
+        shuffleQuestions: false,
+        questions: requests,
+      });
 
       toast({
         title: 'Thành công',
@@ -231,11 +222,12 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
         numQuestions,
       });
 
-      // Convert to QuizQuestion format
+      // Convert to QuizQuestion format (backend returns: text, type, points, explanation, options[{text, correct}])
       const newQuestions: QuizQuestion[] = generatedQuestions.map(gq => ({
         questionText: gq.text,
-        questionType: 'MULTIPLE_CHOICE',
+        questionType: (gq.type || 'MULTIPLE_CHOICE') as 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY',
         points: gq.points || 10,
+        explanation: gq.explanation || '',
         options: gq.options.map(opt => ({
           optionText: opt.text,
           isCorrect: opt.correct,
@@ -419,6 +411,17 @@ export default function QuizBuilder({ quizId, onClose, onSave }: QuizBuilderProp
                       rows={4}
                       allowImage={true}
                       folder="quiz-questions"
+                    />
+
+                    {/* Explanation Field */}
+                    <MathTextInput
+                      label="Giải Thích Đáp Án"
+                      value={question.explanation || ''}
+                      onChange={(value) => updateQuestion(qIndex, 'explanation', value)}
+                      placeholder="Nhập giải thích chi tiết cách giải câu hỏi này (hỗ trợ $công thức$, $$công thức block$$)"
+                      rows={3}
+                      allowImage={false}
+                      folder="quiz-explanations"
                     />
 
                     <div className="grid grid-cols-2 gap-4">

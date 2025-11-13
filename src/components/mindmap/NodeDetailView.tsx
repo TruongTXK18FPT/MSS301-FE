@@ -27,7 +27,7 @@ import {
   ExerciseRequest
 } from '@/lib/dto/mindmap';
 import { ConceptForm, FormulaForm, ExerciseForm } from './NodeContentForms';
-import LatexPreview from '@/components/classroom/LatexPreview';
+import MarkdownMessage from '@/components/chat/MarkdownMessage';
 
 interface NodeDetailViewProps {
   nodeId: string;
@@ -336,35 +336,27 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                     <CardContent className="space-y-3 bg-white">
                       <div>
                         <h4 className="font-semibold text-sm text-gray-900 mb-1">Định nghĩa:</h4>
-                        <LatexPreview content={concept.definition} className="text-sm text-gray-800" />
+                        <MarkdownMessage content={concept.definition} className="text-sm text-gray-800" />
                       </div>
                       
                       {concept.explanation && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Giải thích:</h4>
-                          <LatexPreview content={concept.explanation} className="text-sm text-gray-800" />
+                          <MarkdownMessage content={concept.explanation} className="text-sm text-gray-800" />
                         </div>
                       )}
 
                       {concept.keyPoints && concept.keyPoints.trim() && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Điểm chính:</h4>
-                          <ul className="list-disc list-inside text-sm text-gray-800 space-y-1">
-                            {concept.keyPoints.split('\n').filter(p => p.trim()).map((point, idx) => (
-                              <li key={idx}><LatexPreview content={point} className="inline text-gray-800" /></li>
-                            ))}
-                          </ul>
+                          <MarkdownMessage content={concept.keyPoints} className="text-sm text-gray-800" />
                         </div>
                       )}
 
                       {concept.examples && concept.examples.trim() && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Ví dụ:</h4>
-                          <ul className="list-disc list-inside text-sm text-gray-800 space-y-1">
-                            {concept.examples.split('\n').filter(e => e.trim()).map((example, idx) => (
-                              <li key={idx}><LatexPreview content={example} className="inline text-gray-800" /></li>
-                            ))}
-                          </ul>
+                          <MarkdownMessage content={concept.examples} className="text-sm text-gray-800" />
                         </div>
                       )}
 
@@ -374,7 +366,7 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                             <Lightbulb className="h-4 w-4 text-yellow-700 flex-shrink-0 mt-0.5" />
                             <div>
                               <h4 className="font-semibold text-sm text-gray-900 mb-1">Mẹo:</h4>
-                              <LatexPreview content={concept.tips} className="text-sm text-gray-800" />
+                              <MarkdownMessage content={concept.tips} className="text-sm text-gray-800" />
                             </div>
                           </div>
                         </div>
@@ -418,7 +410,7 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                     </CardHeader>
                     <CardContent className="space-y-3 bg-white">
                       <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <LatexPreview 
+                        <MarkdownMessage 
                           content={formula.formulaLatex || formula.formulaText} 
                           className="text-center text-lg text-gray-900"
                         />
@@ -427,7 +419,7 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                       {formula.description && formula.description.trim() && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Mô tả:</h4>
-                          <LatexPreview content={formula.description} className="text-sm text-gray-800" />
+                          <MarkdownMessage content={formula.description} className="text-sm text-gray-800" />
                         </div>
                       )}
 
@@ -435,7 +427,7 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-2">Biến số:</h4>
                           <div className="bg-blue-50 rounded p-3 border border-blue-200">
-                            <LatexPreview content={formula.variables} className="text-sm text-gray-900" />
+                            <MarkdownMessage content={formula.variables} className="text-sm text-gray-900" />
                           </div>
                         </div>
                       )}
@@ -444,7 +436,7 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Ví dụ sử dụng:</h4>
                           <div className="bg-green-50 rounded p-3 border border-green-200">
-                            <LatexPreview content={formula.usageExample} className="text-sm text-gray-800" />
+                            <MarkdownMessage content={formula.usageExample} className="text-sm text-gray-800" />
                           </div>
                         </div>
                       )}
@@ -452,7 +444,7 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                       {formula.conditions && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Điều kiện:</h4>
-                          <LatexPreview content={formula.conditions} className="text-sm text-gray-800" />
+                          <MarkdownMessage content={formula.conditions} className="text-sm text-gray-800" />
                         </div>
                       )}
                     </CardContent>
@@ -511,31 +503,30 @@ export default function NodeDetailView({ nodeId, nodeName, nodeType, onClose }: 
                     <CardContent className="space-y-3 bg-white">
                       <div>
                         <h4 className="font-semibold text-sm text-gray-900 mb-1">Câu hỏi:</h4>
-                        <LatexPreview content={exercise.question} className="text-sm text-gray-800" />
+                        <MarkdownMessage content={exercise.question} className="text-sm text-gray-800" />
                       </div>
 
                       {exercise.answer && exercise.answer.trim() && (
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Đáp án:</h4>
-                          <LatexPreview content={exercise.answer} className="text-sm text-gray-800" />
+                          <MarkdownMessage content={exercise.answer} className="text-sm text-gray-800" />
                         </div>
                       )}
 
                       {exercise.hints && exercise.hints.length > 0 && (
                         <div>
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Gợi ý:</h4>
-                          <ul className="list-disc list-inside text-sm text-gray-800 space-y-1">
-                            {exercise.hints.map((hint, idx) => (
-                              <li key={idx}><LatexPreview content={hint} className="inline text-gray-800" /></li>
-                            ))}
-                          </ul>
+                          <MarkdownMessage 
+                            content={exercise.hints.map((hint, idx) => `- ${hint}`).join('\n')} 
+                            className="text-sm text-gray-800" 
+                          />
                         </div>
                       )}
 
                       {exercise.solution && (
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                           <h4 className="font-semibold text-sm text-gray-900 mb-1">Lời giải:</h4>
-                          <LatexPreview content={exercise.solution} className="text-sm text-gray-800" />
+                          <MarkdownMessage content={exercise.solution} className="text-sm text-gray-800" />
                         </div>
                       )}
 

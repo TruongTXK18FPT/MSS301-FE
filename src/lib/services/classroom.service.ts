@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { classroomApi } from '@/lib/services/axios';
 import { 
   Classroom, 
@@ -339,6 +340,43 @@ class ClassroomService {
       data
     );
     return response.data.result || response.data;
+  }
+
+  // Get quiz questions from content-service
+  async getQuizDetails(contentItemId: number): Promise<any> {
+    try {
+      // Call content-service directly via gateway
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'}/content/contents/${contentItemId}/quiz`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }
+      );
+      return response.data.result || response.data;
+    } catch (error: any) {
+      console.error('Error fetching quiz details:', error);
+      throw error;
+    }
+  }
+
+  // Get assignment details from content-service
+  async getAssignmentDetails(contentId: number): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'}/content/contents/${contentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }
+      );
+      return response.data.result || response.data;
+    } catch (error: any) {
+      console.error('Error fetching assignment details:', error);
+      throw error;
+    }
   }
 }
 

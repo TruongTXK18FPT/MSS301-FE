@@ -188,3 +188,189 @@
 .animate-success-bounce {
   animation: success-bounce 0.6s ease-in-out;
 }
+
+/* Markdown and LaTeX styling for chat and mindmap */
+.markdown-content {
+  line-height: 1.7;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown-content p {
+  margin-bottom: 1em;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5em;
+}
+
+.markdown-content code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+}
+
+.markdown-content pre {
+  margin: 1em 0;
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.markdown-content pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-content blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid;
+}
+
+.markdown-content table {
+  margin: 1em 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+  padding: 0.5em;
+  border: 1px solid;
+}
+
+.markdown-content table th {
+  font-weight: 600;
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+/* Light theme support for mindmap - Force black text */
+.markdown-content.text-gray-800,
+.markdown-content.text-gray-900 {
+  color: rgb(17, 24, 39) !important; /* gray-900 - black */
+}
+
+/* Force black for text elements, but exclude links and code */
+.markdown-content.text-gray-800 > *:not(a):not(code):not(pre),
+.markdown-content.text-gray-900 > *:not(a):not(code):not(pre) {
+  color: rgb(17, 24, 39) !important; /* Force black for direct children */
+}
+
+.markdown-content.text-gray-800 h1,
+.markdown-content.text-gray-800 h2,
+.markdown-content.text-gray-800 h3,
+.markdown-content.text-gray-800 h4,
+.markdown-content.text-gray-800 h5,
+.markdown-content.text-gray-800 h6,
+.markdown-content.text-gray-900 h1,
+.markdown-content.text-gray-900 h2,
+.markdown-content.text-gray-900 h3,
+.markdown-content.text-gray-900 h4,
+.markdown-content.text-gray-900 h5,
+.markdown-content.text-gray-900 h6 {
+  color: rgb(17, 24, 39) !important; /* gray-900 - black */
+}
+
+.markdown-content.text-gray-800 p,
+.markdown-content.text-gray-800 li,
+.markdown-content.text-gray-800 td,
+.markdown-content.text-gray-800 span,
+.markdown-content.text-gray-800 div,
+.markdown-content.text-gray-900 p,
+.markdown-content.text-gray-900 li,
+.markdown-content.text-gray-900 td,
+.markdown-content.text-gray-900 span,
+.markdown-content.text-gray-900 div {
+  color: rgb(17, 24, 39) !important; /* Force black */
+}
+
+/* Links in light theme - keep visible but darker */
+.markdown-content.text-gray-800 a,
+.markdown-content.text-gray-900 a {
+  color: rgb(34, 197, 94) !important; /* green-500 for light theme */
+}
+
+.markdown-content.text-gray-800 a:hover,
+.markdown-content.text-gray-900 a:hover {
+  color: rgb(22, 163, 74) !important; /* green-600 */
+}
+
+/* Code blocks in light theme */
+.markdown-content.text-gray-800 code,
+.markdown-content.text-gray-900 code {
+  color: rgb(17, 24, 39) !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.markdown-content.text-gray-800 pre,
+.markdown-content.text-gray-900 pre {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.markdown-content.text-gray-800 pre code,
+.markdown-content.text-gray-900 pre code {
+  color: rgb(17, 24, 39) !important;
+  background-color: transparent !important;
+}
+
+/* KaTeX styling */
+.katex {
+  font-size: 1.1em;
+}
+
+.katex-display {
+  margin: 1.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex-display > .katex {
+  display: inline-block;
+  text-align: left;
+}
+
+/* Ensure LaTeX math is properly styled in dark mode */
+.markdown-content .katex {
+  color: inherit;
+}
+
+.markdown-content .katex .mord {
+  color: inherit;
+}
+
+/* KaTeX in light theme - Force black */
+.markdown-content.text-gray-800 .katex,
+.markdown-content.text-gray-900 .katex {
+  color: rgb(17, 24, 39) !important; /* black */
+}
+
+.markdown-content.text-gray-800 .katex .mord,
+.markdown-content.text-gray-900 .katex .mord {
+  color: rgb(17, 24, 39) !important; /* black */
+}
+
+.markdown-content.text-gray-800 .katex .mbin,
+.markdown-content.text-gray-900 .katex .mbin,
+.markdown-content.text-gray-800 .katex .mrel,
+.markdown-content.text-gray-900 .katex .mrel,
+.markdown-content.text-gray-800 .katex .mop,
+.markdown-content.text-gray-900 .katex .mop {
+  color: rgb(17, 24, 39) !important; /* black */
+}
