@@ -31,6 +31,22 @@ function findBalancedParentheses(str: string, startIndex: number): number | null
 function preprocessMath(content: string): string {
   let processed = content;
   
+  // Fix malformed LaTeX: \left$$...\right$$ -> $$\left...\right$$
+  processed = processed.replace(/\\left\$\$/g, '$$\\left');
+  processed = processed.replace(/\\right\$\$/g, '\\right$$');
+  
+  // Fix: $$...$$' -> $$...$$ (remove trailing quote after $$)
+  processed = processed.replace(/\$\$'/g, "$$'");
+  
+  // Fix standalone math commands wrapped in wrong delimiters
+  // Example: \left$$\frac{u}{v}\right$$' -> $$\left(\frac{u}{v}\right)'$$
+  processed = processed.replace(/\$\$\\left([({])?\\frac\{([^}]+)\}\{([^}]+)\}\\right([)}])?\$\$(['′]?)/g, 
+    (match, leftParen, num, denom, rightParen, prime) => {
+      const left = leftParen || '(';
+      const right = rightParen || ')';
+      return `$$\\left${left}\\frac{${num}}{${denom}}\\right${right}${prime || ''}$$`;
+    });
+  
   // Find all potential math expressions in parentheses
   // Look for patterns like ( \lim... ), ( \frac... ), etc.
   const mathStartPattern = /\(\s*\\[a-zA-Z]+/g;
@@ -97,16 +113,16 @@ export default function MarkdownMessage({ content, className }: MarkdownMessageP
             );
           },
           // Headings
-          h1: ({ children }) => <h1 className="text-2xl font-bold mt-4 mb-2 text-inherit">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-xl font-bold mt-3 mb-2 text-inherit">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-lg font-semibold mt-3 mb-1 text-inherit">{children}</h3>,
-          h4: ({ children }) => <h4 className="text-base font-semibold mt-2 mb-1 text-inherit">{children}</h4>,
-          // Paragraphs
-          p: ({ children }) => <p className="mb-2 leading-relaxed text-inherit">{children}</p>,
-          // Lists
-          ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1 ml-4 text-inherit">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1 ml-4 text-inherit">{children}</ol>,
-          li: ({ children }) => <li className="ml-2 text-inherit">{children}</li>,
+          h1: ({ children }) => <h1 className="text-2xl font-bold mt-3 mb-1.5 text-inherit">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-xl font-bold mt-2.5 mb-1.5 text-inherit">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-lg font-semibold mt-2 mb-1 text-inherit">{children}</h3>,
+          h4: ({ children }) => <h4 className="text-base font-semibold mt-1.5 mb-1 text-inherit">{children}</h4>,
+          // Paragraphs - giảm margin để text gọn hơn
+          p: ({ children }) => <p className="mb-1.5 leading-relaxed text-inherit">{children}</p>,
+          // Lists - giảm spacing và margin
+          ul: ({ children }) => <ul className="list-disc list-inside mb-1.5 space-y-0.5 ml-3 text-inherit">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal list-inside mb-1.5 space-y-0.5 ml-3 text-inherit">{children}</ol>,
+          li: ({ children }) => <li className="ml-1 text-inherit leading-relaxed">{children}</li>,
           // Strong and emphasis
           strong: ({ children }) => <strong className="font-bold text-inherit">{children}</strong>,
           em: ({ children }) => <em className="italic text-inherit">{children}</em>,
@@ -123,12 +139,12 @@ export default function MarkdownMessage({ content, className }: MarkdownMessageP
           ),
           // Blockquotes
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-purple-400 pl-4 my-2 italic text-inherit">
+            <blockquote className="border-l-4 border-purple-400 pl-4 my-1.5 italic text-inherit">
               {children}
             </blockquote>
           ),
           // Horizontal rule
-          hr: () => <hr className="my-4 border-purple-500/30" />,
+          hr: () => <hr className="my-3 border-purple-500/30" />,
           // Tables
           table: ({ children }) => (
             <div className="overflow-x-auto my-2">

@@ -53,6 +53,17 @@ export interface DocumentResponseDto {
   totalPages: number | null;           // Tổng số trang
   description: string | null;          // Mô tả tài liệu
   processingJob?: ProcessingJobDto;    // Thông tin job xử lý (optional)
+  googleFileSearchStoreName?: string;  // Google File Search Store name (cho RAG)
+}
+
+/**
+ * File Search Store Response DTO
+ */
+export interface FileSearchStoreResponse {
+  name: string;                         // Store name (e.g., "fileSearchStores/abc123")
+  displayName: string;                  // Display name
+  createTime?: string;                  // ISO 8601 datetime
+  updateTime?: string;                  // ISO 8601 datetime
 }
 
 /**

@@ -69,7 +69,7 @@ import {
   ExpertProfile,
   Source
 } from '@/lib/services/chatbot.service';
-import { getAllDocuments, DocumentResponseDto, DocumentStatus } from '@/lib/services/document.service';
+import { getAllDocuments, DocumentResponseDto, DocumentStatus, getFileSearchStores, FileSearchStoreResponse } from '@/lib/services/document.service';
 import MarkdownMessage from '@/components/chat/MarkdownMessage';
 import {
   Select,
@@ -120,6 +120,7 @@ export default function ChatPage() {
   const [selectedDocument, setSelectedDocument] = useState<DocumentResponseDto | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string>('');
   const [selectedLesson, setSelectedLesson] = useState<string>('');
+  const [validFileSearchStores, setValidFileSearchStores] = useState<Set<string>>(new Set());
   const [useVoiceChat, setUseVoiceChat] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
@@ -136,6 +137,7 @@ export default function ChatPage() {
     if (userId) {
       loadSessions();
       loadDocuments();
+      loadValidFileSearchStores();
     }
   }, [userId]);
 
@@ -180,11 +182,63 @@ export default function ChatPage() {
     try {
       const response = await getAllDocuments(DocumentStatus.COMPLETED);
       if (response.success && response.data) {
-        setDocuments(response.data.documents || []);
+        const docs = response.data.documents || [];
+        setDocuments(docs);
+        // Log để debug
+        console.log('Loaded documents:', docs.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          hasFileSearch: !!doc.googleFileSearchStoreName,
+          fileStoreName: doc.googleFileSearchStoreName
+        })));
       }
     } catch (error) {
       console.error('Error loading documents:', error);
       // Không hiển thị error vì không bắt buộc phải có documents
+    }
+  };
+
+  const loadValidFileSearchStores = async () => {
+    try {
+      const response = await getFileSearchStores();
+      if (response.success && response.data) {
+        // Tạo Set chứa các store names hợp lệ từ Google
+        const validStores = new Set(response.data.map(store => store.name));
+        setValidFileSearchStores(validStores);
+        console.log('Valid File Search Stores loaded:', Array.from(validStores));
+        
+        // Kiểm tra nếu selectedDocument không còn hợp lệ, clear nó
+        if (selectedDocument) {
+          const hasValidStore = !selectedDocument.googleFileSearchStoreName || 
+            validStores.has(selectedDocument.googleFileSearchStoreName);
+          if (!hasValidStore) {
+            console.warn('Selected document no longer has valid file search store, clearing selection');
+            setSelectedDocument(null);
+          }
+        }
+      } else {
+        // Nếu response không success hoặc không có data, set empty set
+        console.warn('Failed to load file search stores:', response.message);
+        setValidFileSearchStores(new Set());
+        
+        // Nếu selectedDocument có store nhưng không load được stores, clear nó
+        if (selectedDocument?.googleFileSearchStoreName) {
+          console.warn('Cannot validate file search stores, clearing selected document with store');
+          setSelectedDocument(null);
+        }
+      }
+    } catch (error) {
+      console.warn('Error loading file search stores (timeout/network issue). ' +
+                   'System will work but file search validation will be disabled:', error);
+      // Nếu không load được (timeout, network error), set empty set
+      // Hệ thống vẫn hoạt động nhưng không validate file search stores
+      setValidFileSearchStores(new Set());
+      
+      // Nếu selectedDocument có store nhưng không load được stores, clear nó
+      if (selectedDocument?.googleFileSearchStoreName) {
+        console.warn('Cannot validate file search stores due to error, clearing selected document with store');
+        setSelectedDocument(null);
+      }
     }
   };
 
@@ -315,12 +369,33 @@ export default function ChatPage() {
 
     try {
       setIsLoading(true);
+      
+      // Sử dụng fileStoreName nếu document có googleFileSearchStoreName VÀ store tồn tại trên Google
+      // Luôn gửi documentId để fallback nếu fileStoreName không tồn tại
+      const rawFileStoreName = selectedDocument?.googleFileSearchStoreName;
+      const fileStoreName = rawFileStoreName && validFileSearchStores.has(rawFileStoreName) 
+        ? rawFileStoreName 
+        : undefined;
+      // Luôn gửi documentId để backend có thể fallback nếu fileStoreName không tồn tại
+      const documentId = selectedDocument?.id;
+      
+      // Log để debug
+      console.log('Sending message with:', {
+        rawFileStoreName,
+        fileStoreName,
+        documentId,
+        documentTitle: selectedDocument?.title,
+        hasFileSearch: !!fileStoreName,
+        isValidStore: rawFileStoreName ? validFileSearchStores.has(rawFileStoreName) : false
+      });
+      
       const response = await chatbotService.sendMessage(selectedSession.id, {
         messages: userMessage,
         gradeLevel: gradeLevel || undefined,
-        documentId: selectedDocument?.id,
+        documentId: documentId,
         chapterId: selectedChapter || undefined,
         lessonId: selectedLesson || undefined,
+        fileStoreName: fileStoreName || undefined, // Đảm bảo không gửi null
         useVoiceChat: useVoiceChat
       });
 
@@ -744,6 +819,18 @@ export default function ChatPage() {
                         setSelectedDocument(doc || null);
                         setSelectedChapter('');
                         setSelectedLesson('');
+                        // Log để debug
+                        if (doc) {
+                          const hasValidFileSearch = doc.googleFileSearchStoreName && 
+                            validFileSearchStores.has(doc.googleFileSearchStoreName);
+                          console.log('Document selected:', {
+                            id: doc.id,
+                            title: doc.title,
+                            hasFileSearch: !!doc.googleFileSearchStoreName,
+                            fileStoreName: doc.googleFileSearchStoreName,
+                            isValidStore: hasValidFileSearch
+                          });
+                        }
                       }}
                     >
                       <SelectTrigger className="bg-black/30 border-purple-400/30 text-white w-full">
@@ -751,26 +838,59 @@ export default function ChatPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {documents.length === 0 ? (
-                          <SelectItem value="" disabled>Chưa có tài liệu nào</SelectItem>
-                        ) : (
-                          documents.map((doc) => (
-                            <SelectItem key={doc.id} value={doc.id}>
-                              {doc.title} {doc.status === DocumentStatus.COMPLETED && '✓'}
-                            </SelectItem>
-                          ))
-                        )}
+                          <div className="px-2 py-1.5 text-sm text-purple-300/70">Chưa có tài liệu nào</div>
+                        ) : (() => {
+                          // Filter documents: chỉ hiển thị documents có store hợp lệ HOẶC không có store
+                          // Ẩn documents có store nhưng store không tồn tại trên Google (đã bị xóa)
+                          const validDocuments = documents.filter(doc => {
+                            if (doc.status !== DocumentStatus.COMPLETED) return false;
+                            
+                            // Nếu không có store, vẫn hiển thị (dùng RAG truyền thống)
+                            if (!doc.googleFileSearchStoreName) return true;
+                            
+                            // Nếu có store, chỉ hiển thị nếu store hợp lệ
+                            return validFileSearchStores.has(doc.googleFileSearchStoreName);
+                          });
+                          
+                          if (validDocuments.length === 0) {
+                            return (
+                              <div className="px-2 py-1.5 text-sm text-purple-300/70">
+                                Không có tài liệu khả dụng. Vui lòng upload lại tài liệu.
+                              </div>
+                            );
+                          }
+                          
+                          return validDocuments.map((doc) => {
+                            // Chỉ hiển thị file search icon nếu store tồn tại trên Google
+                            const hasFileSearch = doc.googleFileSearchStoreName && 
+                              validFileSearchStores.has(doc.googleFileSearchStoreName);
+                            return (
+                              <SelectItem key={doc.id} value={doc.id}>
+                                {doc.title} 
+                                {hasFileSearch && ' 📚'} 
+                                {doc.status === DocumentStatus.COMPLETED && ' ✓'}
+                              </SelectItem>
+                            );
+                          });
+                        })()}
                       </SelectContent>
                     </Select>
+                    {selectedDocument?.googleFileSearchStoreName && 
+                     validFileSearchStores.has(selectedDocument.googleFileSearchStoreName) && (
+                      <Badge className="bg-green-500/20 text-green-300 border-green-400/30">
+                        File Search Ready
+                      </Badge>
+                    )}
           </div>
                 )}
               </CardHeader>
           
           <ScrollArea className="flex-1 p-6" ref={scrollAreaRef}>
-            <div className="space-y-6">
+            <div className="space-y-4">
                   {messages.map((message) => {
                     const messageId = message.createdAt ? `${message.role}-${message.createdAt}` : `${message.role}-${Date.now()}-${Math.random()}`;
                     const messageClasses = cn(
-                      "max-w-[80%] rounded-2xl px-4 py-3 whitespace-pre-wrap backdrop-blur-sm border shadow-lg",
+                      "max-w-[80%] rounded-2xl px-4 py-2.5 whitespace-pre-wrap backdrop-blur-sm border shadow-lg",
                       message.role === 'user' && "bg-gradient-to-r from-purple-600/30 to-indigo-600/30 border-purple-400/30 text-purple-100 shadow-purple-500/20 ml-auto",
                       message.role === 'system' && "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-400/30 text-yellow-100 shadow-yellow-500/20 text-center font-bold mx-auto",
                       message.role === 'assistant' && "bg-gradient-to-r from-cyan-600/30 to-blue-600/30 border-cyan-400/30 text-cyan-100 shadow-cyan-500/20"

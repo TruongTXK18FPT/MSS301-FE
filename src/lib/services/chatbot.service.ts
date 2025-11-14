@@ -13,6 +13,7 @@ export interface ChatbotRequest {
   documentId?: string; // ID của document để chat theo giáo trình (RAG)
   chapterId?: string; // ID của chapter (RAG)
   lessonId?: string; // ID của lesson (RAG)
+  fileStoreName?: string; // Google File Search Store name (cho RAG với file-search)
   useVoiceChat?: boolean; // Sử dụng voice chat với TTS
 }
 

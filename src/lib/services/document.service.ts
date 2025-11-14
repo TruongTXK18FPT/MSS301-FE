@@ -22,6 +22,7 @@ import {
   DocumentApiResponse,
   DocumentsListResponse,
   TocAnalysisDto,
+  FileSearchStoreResponse,
 } from '@/lib/dto/document';
 import { documentApi } from './axios';
 
@@ -39,6 +40,7 @@ export {
   type DocumentApiResponse,
   type DocumentsListResponse,
   type TocAnalysisDto,
+  type FileSearchStoreResponse,
 };
 
 // ============== API Functions ==============
@@ -320,6 +322,38 @@ export function formatDate(dateString: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+/**
+ * Get all File Search Stores from Google
+ */
+export async function getFileSearchStores(): Promise<DocumentApiResponse<FileSearchStoreResponse[]>> {
+  try {
+    const response = await documentApi.get<DocumentApiResponse<FileSearchStoreResponse[]>>(
+      '/google/file-search-stores'
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch file search stores';
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Get File Search Store by name
+ */
+export async function getFileSearchStore(
+  storeName: string
+): Promise<DocumentApiResponse<FileSearchStoreResponse>> {
+  try {
+    const response = await documentApi.get<DocumentApiResponse<FileSearchStoreResponse>>(
+      `/google/file-search-stores/${encodeURIComponent(storeName)}`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch file search store';
+    throw new Error(errorMessage);
+  }
 }
 
 /**
